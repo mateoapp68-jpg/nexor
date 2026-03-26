@@ -4,9 +4,6 @@ import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 
 const JWT_SECRET = process.env.JWT_SECRET
-if (!JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET env variable is not set. The application cannot start without it.')
-}
 
 export interface JWTPayload {
   userId: string
@@ -23,12 +20,14 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: '7d' })
+  if (!JWT_SECRET) throw new Error('JWT_SECRET is not set')
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
 }
 
 export function verifyToken(token: string): JWTPayload | null {
+  if (!JWT_SECRET) return null
   try {
-    return jwt.verify(token, JWT_SECRET as string) as JWTPayload
+    return jwt.verify(token, JWT_SECRET) as JWTPayload
   } catch {
     return null
   }
