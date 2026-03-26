@@ -105,10 +105,10 @@ function CopyButton({ text }: { text: string }) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
-      className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-dark-400 hover:text-white"
+      className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/35 hover:text-white"
       title="Copiar"
     >
-      {copied ? <Check className="w-4 h-4 text-neon-green" /> : <Copy className="w-4 h-4" />}
+      {copied ? <Check className="w-4 h-4 text-amber-400" /> : <Copy className="w-4 h-4" />}
     </button>
   )
 }
@@ -119,7 +119,7 @@ function Alert({ type, msg }: { type: 'error' | 'success'; msg: string }) {
     <div
       className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm fade-in ${type === 'error'
         ? 'bg-red-500/10 border border-red-500/20 text-red-400'
-        : 'bg-neon-green/10 border border-neon-green/20 text-neon-green'
+        : 'bg-amber-400/10 border border-amber-400/20 text-amber-400'
         }`}
     >
       {type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
@@ -129,7 +129,7 @@ function Alert({ type, msg }: { type: 'error' | 'success'; msg: string }) {
 }
 
 function Spinner({ color }: { color?: string }) {
-  return <Loader2 className={`w-4 h-4 animate-spin ${color ?? 'text-neon-green'}`} />
+  return <Loader2 className={`w-4 h-4 animate-spin ${color ?? 'text-amber-400'}`} />
 }
 
 // ─── Create Bot Form ──────────────────────────────────────────────────────────
@@ -163,9 +163,9 @@ function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-2xl border border-neon-green/20">
+    <form onSubmit={handleSubmit} className="bg-white/5 border border-amber-400/20 p-6 rounded-2xl">
       <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-        <Plus className="w-4 h-4 text-neon-green" />
+        <Plus className="w-4 h-4 text-amber-400" />
         Crear nuevo bot
       </h3>
 
@@ -175,37 +175,37 @@ function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string
           type="button"
           onClick={() => setType('YCLOUD')}
           className={`p-3 rounded-xl border text-left transition-all ${type === 'YCLOUD'
-            ? 'border-neon-blue/50 bg-neon-blue/10 text-white'
-            : 'border-white/10 text-dark-400 hover:border-white/20'
+            ? 'border-indigo-400/50 bg-indigo-400/10 text-white'
+            : 'border-white/10 text-white/35 hover:border-white/20'
             }`}
         >
           <Webhook className="w-4 h-4 mb-1.5" />
           <div className="text-xs font-bold">YCloud</div>
-          <div className="text-[10px] text-dark-500 mt-0.5">WhatsApp API</div>
+          <div className="text-[10px] text-white/25 mt-0.5">WhatsApp API</div>
         </button>
         <button
           type="button"
           onClick={() => setType('BAILEYS')}
           className={`p-3 rounded-xl border text-left transition-all ${type === 'BAILEYS'
-            ? 'border-neon-green/50 bg-neon-green/10 text-white'
-            : 'border-white/10 text-dark-400 hover:border-white/20'
+            ? 'border-amber-400/50 bg-amber-400/10 text-white'
+            : 'border-white/10 text-white/35 hover:border-white/20'
             }`}
         >
           <Smartphone className="w-4 h-4 mb-1.5" />
           <div className="text-xs font-bold">WA Web</div>
-          <div className="text-[10px] text-dark-500 mt-0.5">Escanear QR</div>
+          <div className="text-[10px] text-white/25 mt-0.5">Escanear QR</div>
         </button>
         <button
           type="button"
           onClick={() => setType('META')}
           className={`p-3 rounded-xl border text-left transition-all ${type === 'META'
             ? 'border-amber-400/50 bg-amber-400/10 text-white'
-            : 'border-white/10 text-dark-400 hover:border-white/20'
+            : 'border-white/10 text-white/35 hover:border-white/20'
             }`}
         >
           <MessageSquare className="w-4 h-4 mb-1.5" />
           <div className="text-xs font-bold">Messenger</div>
-          <div className="text-[10px] text-dark-500 mt-0.5">Facebook/Instagram</div>
+          <div className="text-[10px] text-white/25 mt-0.5">Facebook/Instagram</div>
         </button>
       </div>
 
@@ -215,13 +215,13 @@ function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Nombre del agente (ej: Agente Ventas Bolivia)"
-          className="flex-1 bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-400 focus:outline-none focus:border-neon-green/40"
+          className="flex-1 bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/35 focus:outline-none focus:border-amber-400/40"
           required
         />
         <button
           type="submit"
           disabled={loading || !name.trim()}
-          className="w-full sm:w-auto px-5 py-2.5 bg-neon-green text-dark-950 font-bold rounded-xl text-sm hover:bg-neon-green/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+          className="w-full sm:w-auto px-5 py-2.5 bg-amber-400 text-[#0B0B12] font-bold rounded-xl text-sm hover:bg-amber-400/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
         >
           {loading ? <Spinner /> : <Plus className="w-4 h-4" />}
           Crear Bot
@@ -332,7 +332,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
   const yVals = [0, Math.round(maxVal / 2), maxVal]
 
   return (
-    <div className="glass-panel rounded-2xl" style={{ padding: '20px 20px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="bg-white/5 border border-white/10 rounded-2xl" style={{ padding: '20px 20px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
@@ -342,17 +342,17 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
               : 'Últimos 7 días'}
           </p>
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', margin: '4px 0 0' }}>
-            <span style={{ color: '#FFD700', fontWeight: 700 }}>{visibleDays.reduce((s, d) => s + d.conversations, 0)}</span> personas ·{' '}
-            <span style={{ color: '#00FF88', fontWeight: 700 }}>{visibleDays.reduce((s, d) => s + d.sales, 0)}</span> ventas
+            <span style={{ color: '#818CF8', fontWeight: 700 }}>{visibleDays.reduce((s, d) => s + d.conversations, 0)}</span> personas ·{' '}
+            <span style={{ color: '#F59E0B', fontWeight: 700 }}>{visibleDays.reduce((s, d) => s + d.sales, 0)}</span> ventas
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-            <span style={{ display: 'inline-block', width: 10, height: 3, borderRadius: 99, background: '#38BDF8' }} />
+            <span style={{ display: 'inline-block', width: 10, height: 3, borderRadius: 99, background: '#818CF8' }} />
             ● Personas
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-            <span style={{ display: 'inline-block', width: 10, height: 3, borderRadius: 99, background: '#00FF88' }} />
+            <span style={{ display: 'inline-block', width: 10, height: 3, borderRadius: 99, background: '#F59E0B' }} />
             ✦ Ventas
           </span>
         </div>
@@ -364,16 +364,16 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
           {bots.map(b => (
             <button key={b.id} onClick={() => setSelectedBotId(b.id)}
               style={{ padding: '4px 12px', borderRadius: 99, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid', transition: 'all 0.15s',
-                background: selectedBotId === b.id ? 'rgba(255,45,247,0.1)' : 'transparent',
-                borderColor: selectedBotId === b.id ? 'rgba(255,45,247,0.4)' : 'rgba(255,255,255,0.08)',
-                color: selectedBotId === b.id ? '#FF2DF7' : 'rgba(255,255,255,0.35)',
+                background: selectedBotId === b.id ? 'rgba(245,158,11,0.12)' : 'transparent',
+                borderColor: selectedBotId === b.id ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.08)',
+                color: selectedBotId === b.id ? '#F59E0B' : 'rgba(255,255,255,0.35)',
               }}>
               🤖 {b.name}
               {(b.salesCount ?? 0) > 0 && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   minWidth: 16, height: 16, borderRadius: 99,
-                  background: '#38BDF8', color: '#000',
+                  background: '#F59E0B', color: '#000',
                   fontSize: 9, fontWeight: 800, padding: '0 4px', marginLeft: 4,
                 }}>
                   {b.salesCount}
@@ -387,7 +387,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
       {/* Chart */}
       {loadingChart ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140 }}>
-          <Loader2 className="w-5 h-5 animate-spin text-dark-400" />
+          <Loader2 className="w-5 h-5 animate-spin text-white/35" />
         </div>
       ) : (
         <div
@@ -409,21 +409,21 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
           <defs>
             {/* Conversations — cyan */}
             <linearGradient id="gc-conv-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#38BDF8" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+              <stop offset="0%"   stopColor="#818CF8" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="gc-conv-line" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%"   stopColor="#7DD3FC" />
-              <stop offset="100%" stopColor="#38BDF8" />
+              <stop offset="100%" stopColor="#818CF8" />
             </linearGradient>
             {/* Sales — green */}
             <linearGradient id="gc-sales-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#00FF88" stopOpacity="0.20" />
-              <stop offset="100%" stopColor="#00FF88" stopOpacity="0" />
+              <stop offset="0%"   stopColor="#F59E0B" stopOpacity="0.20" />
+              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="gc-sales-line" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%"   stopColor="#6EE7B7" />
-              <stop offset="100%" stopColor="#00FF88" />
+              <stop offset="100%" stopColor="#F59E0B" />
             </linearGradient>
             <filter id="gc-glow-conv" x="-30%" y="-30%" width="160%" height="160%">
               <feGaussianBlur stdDeviation="2" result="blur"/>
@@ -459,7 +459,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
           {convArea  && <path d={convArea}  fill="url(#gc-conv-area)" />}
           {convLine  && <path d={convLine}  fill="none" stroke="url(#gc-conv-line)"  strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" filter="url(#gc-glow-conv)" />}
           {convPoints.map((p, i) => p.val === 0 ? null : (
-            <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#38BDF8" stroke="rgba(0,0,0,0.7)" strokeWidth="1.5" />
+            <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#818CF8" stroke="rgba(0,0,0,0.7)" strokeWidth="1.5" />
           ))}
 
           {/* ── Ventas (green) con badges ── */}
@@ -469,11 +469,11 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
             if (p.val === 0) return null
             return (
               <g key={i} filter="url(#gc-dot-glow)">
-                <circle cx={p.x} cy={p.y} r="10" fill="#00FF88" opacity="0.07" />
-                <rect x={p.x - 11} y={p.y - 30} width="22" height="15" rx="5" fill="#00FF88" opacity="0.92" />
+                <circle cx={p.x} cy={p.y} r="10" fill="#F59E0B" opacity="0.07" />
+                <rect x={p.x - 11} y={p.y - 30} width="22" height="15" rx="5" fill="#F59E0B" opacity="0.92" />
                 <text x={p.x} y={p.y - 19} textAnchor="middle" fontSize="8" fontWeight="800" fill="#000">{p.val}</text>
-                <line x1={p.x} y1={p.y - 15} x2={p.x} y2={p.y - 5} stroke="#00FF88" strokeWidth="1" opacity="0.4" />
-                <circle cx={p.x} cy={p.y} r="4" fill="#00FF88" stroke="rgba(0,0,0,0.7)" strokeWidth="1.5" />
+                <line x1={p.x} y1={p.y - 15} x2={p.x} y2={p.y - 5} stroke="#F59E0B" strokeWidth="1" opacity="0.4" />
+                <circle cx={p.x} cy={p.y} r="4" fill="#F59E0B" stroke="rgba(0,0,0,0.7)" strokeWidth="1.5" />
                 <circle cx={p.x} cy={p.y} r="2" fill="#fff" opacity="0.5" />
               </g>
             )
@@ -497,9 +497,9 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
             onClick={() => { setShowSalesModal(true); setSalesSeen(true) }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
-              fontWeight: 700, color: '#38BDF8',
-              background: 'rgba(56,189,248,0.08)',
-              border: '1px solid rgba(56,189,248,0.25)',
+              fontWeight: 700, color: '#818CF8',
+              background: 'rgba(129,140,248,0.08)',
+              border: '1px solid rgba(129,140,248,0.25)',
               borderRadius: 10, padding: '7px 16px',
               cursor: 'pointer', transition: 'all 0.15s',
             }}
@@ -509,7 +509,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 minWidth: 18, height: 18, borderRadius: 99,
-                background: '#38BDF8', color: '#000',
+                background: '#818CF8', color: '#000',
                 fontSize: 10, fontWeight: 800, padding: '0 5px',
               }}>
                 {recentSales.length}
@@ -533,14 +533,14 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#0F1117', border: '1px solid rgba(56,189,248,0.2)',
+              background: '#0B0B12', border: '1px solid rgba(129,140,248,0.2)',
               borderRadius: 18, padding: 24, width: '100%', maxWidth: 520,
-              maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 0 40px rgba(56,189,248,0.1)',
+              maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 0 40px rgba(129,140,248,0.1)',
             }}
           >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#38BDF8' }}>📋 Ventas recientes</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#818CF8' }}>📋 Ventas recientes</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {recentSales.length > 0 && (
                   <button
@@ -577,7 +577,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {recentSales.map((s, i) => (
                   <div key={i} style={{
-                    background: 'rgba(0,255,136,0.03)', border: '1px solid rgba(0,255,136,0.08)',
+                    background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.08)',
                     borderRadius: 12, padding: '10px 12px',
                   }}>
                     {/* Nombre + fecha */}
@@ -592,8 +592,8 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
                     {/* Teléfono — línea propia para que no desborde */}
                     <div style={{
                       display: 'inline-block', marginBottom: s.reporte ? 8 : 0,
-                      fontSize: 10, fontWeight: 600, color: '#38BDF8',
-                      background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
+                      fontSize: 10, fontWeight: 600, color: '#818CF8',
+                      background: 'rgba(129,140,248,0.08)', border: '1px solid rgba(129,140,248,0.2)',
                       borderRadius: 5, padding: '2px 7px',
                       wordBreak: 'break-all',
                     }}>
@@ -605,7 +605,7 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
                         fontSize: 11, color: 'rgba(255,255,255,0.6)',
                         background: 'rgba(0,0,0,0.25)', borderRadius: 8,
                         padding: '7px 10px', lineHeight: 1.6,
-                        borderLeft: '2px solid rgba(0,255,136,0.3)',
+                        borderLeft: '2px solid rgba(245,158,11,0.3)',
                         whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                       }}>
                         {s.reporte}
@@ -628,28 +628,28 @@ function GlobalBotChart({ bots }: { bots: Bot[] }) {
 function BotCard({ bot, onSelect }: { bot: Bot; onSelect: (bot: Bot) => void }) {
   const isActive = bot.status === 'ACTIVE'
   return (
-    <div className={`glass-panel p-3 sm:p-5 rounded-2xl border relative overflow-hidden transition-all hover:border-white/15 ${isActive ? 'border-white/5' : 'border-white/5 opacity-80'}`}>
+    <div className={`bg-white/5 p-3 sm:p-5 rounded-2xl border relative overflow-hidden transition-all ${isActive ? 'border-amber-400/20 hover:border-amber-400/35' : 'border-white/8 opacity-80 hover:border-white/15'}`}>
       {/* Active left border glow */}
       {isActive && (
-        <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-neon-green/70 rounded-full" />
+        <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-amber-400/70 rounded-full" />
       )}
-      <div className={`absolute inset-0 bg-gradient-to-br to-transparent opacity-0 hover:opacity-100 transition-opacity ${isActive ? 'from-neon-green/5' : 'from-white/3'}`} />
+      <div className={`absolute inset-0 bg-gradient-to-br to-transparent opacity-0 hover:opacity-100 transition-opacity ${isActive ? 'from-amber-400/5' : 'from-white/3'}`} />
       <button
         onClick={() => onSelect(bot)}
         className="relative z-10 w-full text-left group"
       >
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${isActive ? 'bg-neon-green/10 border-neon-green/20' : 'bg-white/5 border-white/10'}`}>
-              <Bot className={`w-5 h-5 ${isActive ? 'text-neon-green' : 'text-dark-400'}`} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${isActive ? 'bg-amber-400/10 border-amber-400/20' : 'bg-white/5 border-white/10'}`}>
+              <Bot className={`w-5 h-5 ${isActive ? 'text-amber-400' : 'text-white/35'}`} />
             </div>
             <div>
               <div className="font-bold text-white text-sm">{bot.name}</div>
-              <div className="text-xs text-dark-400 mt-0.5">
+              <div className="text-xs text-white/35 mt-0.5">
                 <span className="inline-flex items-center gap-1">
                   <ShoppingBag className="w-3 h-3" /> {bot._count?.assignedProducts ?? 0}
                 </span>
-                <span className="mx-1.5 text-dark-600">·</span>
+                <span className="mx-1.5 text-white/15">·</span>
                 <span className="inline-flex items-center gap-1">
                   <MessageCircle className="w-3 h-3" /> {bot._count?.conversations ?? 0}
                 </span>
@@ -657,20 +657,20 @@ function BotCard({ bot, onSelect }: { bot: Bot; onSelect: (bot: Bot) => void }) 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full border ${isActive ? 'bg-neon-green/10 text-neon-green border-neon-green/20' : 'bg-dark-700/50 text-dark-400 border-dark-600'}`}>
+            <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full border ${isActive ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-white/5/50 text-white/35 border-white/10'}`}>
               {isActive && (
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-green" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
                 </span>
               )}
               {isActive ? 'ACTIVO' : 'PAUSADO'}
             </span>
-            <ChevronRight className="w-4 h-4 text-dark-500 group-hover:text-white transition-colors" />
+            <ChevronRight className="w-4 h-4 text-white/25 group-hover:text-white transition-colors" />
           </div>
         </div>
         {bot.secret?.whatsappInstanceNumber && (
-          <div className="text-xs text-dark-400 flex items-center gap-1">
+          <div className="text-xs text-white/35 flex items-center gap-1">
             <Smartphone className="w-3 h-3" />
             {bot.secret.whatsappInstanceNumber}
           </div>
@@ -709,24 +709,24 @@ function WebhookTab({ bot }: { bot: Bot }) {
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel p-6 rounded-2xl border border-neon-blue/20">
+      <div className="bg-white/5 border border-indigo-400/20 p-6 rounded-2xl">
         <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-          <Webhook className="w-4 h-4 text-neon-blue" />
+          <Webhook className="w-4 h-4 text-indigo-400" />
           URL del Webhook
         </h3>
-        <p className="text-xs text-dark-400 mb-4">
+        <p className="text-xs text-white/35 mb-4">
           {isMeta
             ? 'Configura esta URL en developers.facebook.com → tu App → Messenger → Webhooks. El Verify Token es el de abajo.'
             : 'Configura esta URL en tu panel de YCloud como Webhook URL para mensajes entrantes.'}
         </p>
-        <div className="bg-dark-900/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
-          <code className="flex-1 text-xs text-neon-blue break-all font-mono">{webhookUrl}</code>
+        <div className="bg-[#0B0B12]/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
+          <code className="flex-1 text-xs text-indigo-400 break-all font-mono">{webhookUrl}</code>
           <CopyButton text={webhookUrl} />
         </div>
         {isMeta && (
           <div className="mt-3">
-            <p className="text-xs text-dark-400 mb-2">Verify Token (pégalo en Meta al configurar el webhook):</p>
-            <div className="bg-dark-900/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
+            <p className="text-xs text-white/35 mb-2">Verify Token (pégalo en Meta al configurar el webhook):</p>
+            <div className="bg-[#0B0B12]/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
               <code className="flex-1 text-xs text-amber-400 break-all font-mono">{bot.webhookToken}</code>
               <CopyButton text={bot.webhookToken} />
             </div>
@@ -735,17 +735,17 @@ function WebhookTab({ bot }: { bot: Bot }) {
       </div>
 
       {!isMeta && (
-        <div className="glass-panel p-6 rounded-2xl">
+        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
           <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-            <Key className="w-4 h-4 text-neon-purple" />
+            <Key className="w-4 h-4 text-violet-400" />
             Webhook Token (secreto)
           </h3>
-          <p className="text-xs text-dark-400 mb-4">
+          <p className="text-xs text-white/35 mb-4">
             Este token valida que el webhook viene de YCloud. Ya está incluido en la URL anterior como{' '}
-            <code className="text-neon-purple">?token=...</code>
+            <code className="text-violet-400">?token=...</code>
           </p>
-          <div className="bg-dark-900/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
-            <code className="flex-1 text-xs text-dark-300 font-mono truncate">
+          <div className="bg-[#0B0B12]/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
+            <code className="flex-1 text-xs text-white/50 font-mono truncate">
               {bot.webhookToken.slice(0, 8)}{'*'.repeat(20)}{bot.webhookToken.slice(-4)}
             </code>
             <CopyButton text={bot.webhookToken} />
@@ -753,7 +753,7 @@ function WebhookTab({ bot }: { bot: Bot }) {
         </div>
       )}
 
-      <div className="glass-panel p-6 rounded-2xl border border-white/5">
+      <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
         {isMeta ? (
           <>
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
@@ -771,7 +771,7 @@ function WebhookTab({ bot }: { bot: Bot }) {
                 'En "Tokens de acceso" genera el token para tu Página y guárdalo en Credenciales',
                 'Envía un mensaje de prueba a tu Página de Facebook',
               ].map((step, i) => (
-                <li key={i} className="flex gap-3 text-sm text-dark-300">
+                <li key={i} className="flex gap-3 text-sm text-white/50">
                   <span className="w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                     {i + 1}
                   </span>
@@ -792,8 +792,8 @@ function WebhookTab({ bot }: { bot: Bot }) {
                 'Guarda la configuración',
                 'Envía un mensaje de prueba al número configurado',
               ].map((step, i) => (
-                <li key={i} className="flex gap-3 text-sm text-dark-300">
-                  <span className="w-5 h-5 rounded-full bg-neon-blue/10 border border-neon-blue/20 text-neon-blue text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <li key={i} className="flex gap-3 text-sm text-white/50">
+                  <span className="w-5 h-5 rounded-full bg-indigo-400/10 border border-indigo-400/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                     {i + 1}
                   </span>
                   {step}
@@ -805,12 +805,12 @@ function WebhookTab({ bot }: { bot: Bot }) {
       </div>
 
       {/* ── Zona de riesgo ── */}
-      <div className="glass-panel p-6 rounded-2xl border border-red-500/20">
+      <div className="bg-white/5 border border-red-500/20 p-6 rounded-2xl">
         <h3 className="text-sm font-bold text-red-400 flex items-center gap-2 mb-1">
           <Trash2 className="w-4 h-4" />
           Zona de riesgo
         </h3>
-        <p className="text-xs text-dark-400 mb-4">
+        <p className="text-xs text-white/35 mb-4">
           Elimina permanentemente todo el historial de conversaciones y mensajes de este bot.
           Los productos y la configuración no se verán afectados.
         </p>
@@ -908,10 +908,10 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
   return (
     <div className="space-y-6">
       {/* Status toggle */}
-      <div className="glass-panel p-5 rounded-2xl flex items-center justify-between gap-3">
+      <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-bold text-white">Estado del Agente</div>
-          <div className="text-xs text-dark-400 mt-0.5 truncate">
+          <div className="text-xs text-white/35 mt-0.5 truncate">
             {bot.status === 'ACTIVE' ? 'El bot está respondiendo mensajes' : 'El bot está pausado'}
           </div>
         </div>
@@ -923,20 +923,20 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
           {savingStatus ? (
             <Spinner />
           ) : bot.status === 'ACTIVE' ? (
-            <ToggleRight className="w-8 h-8 text-neon-green" />
+            <ToggleRight className="w-8 h-8 text-amber-400" />
           ) : (
-            <ToggleLeft className="w-8 h-8 text-dark-500" />
+            <ToggleLeft className="w-8 h-8 text-white/25" />
           )}
-          <span className={bot.status === 'ACTIVE' ? 'text-neon-green' : 'text-dark-400'}>
+          <span className={bot.status === 'ACTIVE' ? 'text-amber-400' : 'text-white/35'}>
             {bot.status === 'ACTIVE' ? 'Activo' : 'Pausado'}
           </span>
         </button>
       </div>
 
       {/* Credentials form */}
-      <form onSubmit={handleSave} className="glass-panel p-6 rounded-2xl space-y-5">
+      <form onSubmit={handleSave} className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-5">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Key className="w-4 h-4 text-neon-purple" />
+          <Key className="w-4 h-4 text-violet-400" />
           Claves de API
         </h3>
 
@@ -945,10 +945,10 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         {/* YCloud API Key — solo para bots YCloud */}
         {!isBaileys && !isMeta && (
           <div>
-            <label className="block text-xs font-medium text-dark-300 mb-1.5">
+            <label className="block text-xs font-medium text-white/50 mb-1.5">
               YCloud API Key{' '}
               {creds?.hasYcloudKey && (
-                <span className="text-neon-green ml-1">✓ configurada</span>
+                <span className="text-amber-400 ml-1">✓ configurada</span>
               )}
             </label>
             <div className="relative">
@@ -957,12 +957,12 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
                 value={form.ycloudApiKey}
                 onChange={e => setForm(f => ({ ...f, ycloudApiKey: e.target.value }))}
                 placeholder={creds?.hasYcloudKey ? '(dejar vacío para mantener)' : 'yk_live_...'}
-                className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-purple/40"
+                className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-400/40"
               />
               <button
                 type="button"
                 onClick={() => setShowYcloud(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white"
               >
                 {showYcloud ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -973,10 +973,10 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         {/* Meta Page Access Token — solo para bots META */}
         {isMeta && (
           <div>
-            <label className="block text-xs font-medium text-dark-300 mb-1.5">
+            <label className="block text-xs font-medium text-white/50 mb-1.5">
               Meta Page Access Token{' '}
               {creds?.hasMetaToken && (
-                <span className="text-neon-green ml-1">✓ configurado ({creds.metaPageTokenHint})</span>
+                <span className="text-amber-400 ml-1">✓ configurado ({creds.metaPageTokenHint})</span>
               )}
             </label>
             <div className="relative">
@@ -985,26 +985,26 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
                 value={form.metaPageToken}
                 onChange={e => setForm(f => ({ ...f, metaPageToken: e.target.value }))}
                 placeholder={creds?.hasMetaToken ? '(dejar vacío para mantener)' : 'EAAxxxxxxx...'}
-                className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-amber-400/40"
+                className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-amber-400/40"
               />
               <button
                 type="button"
                 onClick={() => setShowMeta(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white"
               >
                 {showMeta ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-xs text-dark-500 mt-1">Obtén el token permanente desde developers.facebook.com → tu App → Messenger → Tokens de acceso.</p>
+            <p className="text-xs text-white/25 mt-1">Obtén el token permanente desde developers.facebook.com → tu App → Messenger → Tokens de acceso.</p>
           </div>
         )}
 
         {/* OpenAI API Key */}
         <div>
-          <label className="block text-xs font-medium text-dark-300 mb-1.5">
+          <label className="block text-xs font-medium text-white/50 mb-1.5">
             OpenAI API Key{' '}
             {creds?.hasOpenAIKey && (
-              <span className="text-neon-green ml-1">✓ configurada</span>
+              <span className="text-amber-400 ml-1">✓ configurada</span>
             )}
           </label>
           <div className="relative">
@@ -1013,12 +1013,12 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
               value={form.openaiApiKey}
               onChange={e => setForm(f => ({ ...f, openaiApiKey: e.target.value }))}
               placeholder={creds?.hasOpenAIKey ? '(dejar vacío para mantener)' : 'sk-proj-...'}
-              className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-purple/40"
+              className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-400/40"
             />
             <button
               type="button"
               onClick={() => setShowOpenai(s => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white"
             >
               {showOpenai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -1028,14 +1028,14 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         {/* WhatsApp number — solo para bots YCloud */}
         {!isBaileys && !isMeta && (
           <div>
-            <label className="block text-xs font-medium text-dark-300 mb-1.5">
+            <label className="block text-xs font-medium text-white/50 mb-1.5">
               Número WhatsApp Business (from)
             </label>
             <input
               value={form.whatsappInstanceNumber}
               onChange={e => setForm(f => ({ ...f, whatsappInstanceNumber: e.target.value }))}
               placeholder="15551234567 (sin + ni espacios)"
-              className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-purple/40"
+              className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-400/40"
             />
           </div>
         )}
@@ -1043,17 +1043,17 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         {/* Report phone — solo para bots WhatsApp (YCLOUD y BAILEYS) */}
         {!isMeta && (
           <div>
-            <label className="block text-xs font-medium text-dark-300 mb-1.5">
+            <label className="block text-xs font-medium text-white/50 mb-1.5">
               Número interno para reportes
             </label>
             <input
               value={form.reportPhone}
               onChange={e => setForm(f => ({ ...f, reportPhone: e.target.value }))}
               placeholder="15559876543"
-              className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-purple/40"
+              className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-400/40"
               required
             />
-            <p className="text-xs text-dark-500 mt-1">
+            <p className="text-xs text-white/25 mt-1">
               Cuando un cliente confirme su pedido, el agente enviará un reporte a este número por WhatsApp.
             </p>
           </div>
@@ -1062,7 +1062,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-neon-purple text-white font-bold rounded-xl hover:bg-neon-purple/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 bg-violet-400 text-white font-bold rounded-xl hover:bg-violet-400/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
           {loading ? <Spinner /> : <Save className="w-4 h-4" />}
           Guardar credenciales
@@ -1070,20 +1070,20 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
       </form>
 
       {/* Model selector */}
-      <div className="glass-panel p-6 rounded-2xl space-y-4">
+      <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-4">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Zap className="w-4 h-4 text-neon-green" />
+          <Zap className="w-4 h-4 text-amber-400" />
           Modelo de IA
-          <span className="text-xs font-normal text-dark-400 ml-1">— para respuestas al cliente</span>
+          <span className="text-xs font-normal text-white/35 ml-1">— para respuestas al cliente</span>
         </h3>
-        <p className="text-xs text-dark-500">Los seguimientos automáticos siempre usan GPT-4o Mini (más económico).</p>
+        <p className="text-xs text-white/25">Los seguimientos automáticos siempre usan GPT-4o Mini (más económico).</p>
 
         <div className="space-y-2">
           {[
-            { id: 'gpt-5.2',     label: 'GPT-5.2',     desc: 'Último modelo · Máxima capacidad', color: 'text-neon-purple' },
-            { id: 'gpt-5.1',     label: 'GPT-5.1',     desc: 'Más inteligente · Mayor costo',    color: 'text-neon-purple' },
-            { id: 'gpt-4o',      label: 'GPT-4o',       desc: 'Equilibrado · Costo moderado',     color: 'text-neon-blue' },
-            { id: 'gpt-4o-mini', label: 'GPT-4o Mini',  desc: 'Más económico · Muy capaz',        color: 'text-neon-green' },
+            { id: 'gpt-5.2',     label: 'GPT-5.2',     desc: 'Último modelo · Máxima capacidad', color: 'text-violet-400' },
+            { id: 'gpt-5.1',     label: 'GPT-5.1',     desc: 'Más inteligente · Mayor costo',    color: 'text-violet-400' },
+            { id: 'gpt-4o',      label: 'GPT-4o',       desc: 'Equilibrado · Costo moderado',     color: 'text-indigo-400' },
+            { id: 'gpt-4o-mini', label: 'GPT-4o Mini',  desc: 'Más económico · Muy capaz',        color: 'text-amber-400' },
           ].map(m => (
             <button
               key={m.id}
@@ -1091,15 +1091,15 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
               onClick={() => setSelectedModel(m.id)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
                 selectedModel === m.id
-                  ? 'border-neon-purple/60 bg-neon-purple/10'
-                  : 'border-white/10 bg-dark-900/30 hover:border-white/20'
+                  ? 'border-violet-400/60 bg-violet-400/10'
+                  : 'border-white/10 bg-[#0B0B12]/30 hover:border-white/20'
               }`}
             >
               <div>
                 <span className={`text-sm font-semibold ${selectedModel === m.id ? m.color : 'text-white'}`}>{m.label}</span>
-                <p className="text-xs text-dark-400 mt-0.5">{m.desc}</p>
+                <p className="text-xs text-white/35 mt-0.5">{m.desc}</p>
               </div>
-              {selectedModel === m.id && <CheckCircle2 className="w-4 h-4 text-neon-purple shrink-0" />}
+              {selectedModel === m.id && <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />}
             </button>
           ))}
         </div>
@@ -1118,7 +1118,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
               setSavingModel(false)
             }
           }}
-          className="w-full py-2.5 bg-dark-800 border border-white/10 text-white text-sm font-semibold rounded-xl hover:border-neon-green/40 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-2.5 bg-white/4 border border-white/10 text-white text-sm font-semibold rounded-xl hover:border-amber-400/40 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
           {savingModel ? <Spinner /> : <Save className="w-4 h-4" />}
           Guardar modelo
@@ -1306,9 +1306,9 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
-      <div className="glass-panel p-6 rounded-2xl space-y-5">
+      <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-5">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <FileText className="w-4 h-4 text-neon-blue" />
+          <FileText className="w-4 h-4 text-indigo-400" />
           Prompt del vendedor
         </h3>
 
@@ -1316,7 +1316,7 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-medium text-dark-300">
+            <label className="block text-xs font-medium text-white/50">
               Instrucciones del vendedor (system prompt)
             </label>
             <button
@@ -1328,7 +1328,7 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
                   setForm(f => ({ ...f, systemPromptTemplate: EXAMPLE_PROMPT }))
                 }
               }}
-              className="text-[10px] px-2.5 py-1 rounded-lg bg-neon-blue/10 border border-neon-blue/20 text-neon-blue hover:bg-neon-blue/20 transition-colors font-medium"
+              className="text-[10px] px-2.5 py-1 rounded-lg bg-indigo-400/10 border border-indigo-400/20 text-indigo-400 hover:bg-indigo-400/20 transition-colors font-medium"
             >
               Cargar plantilla de ejemplo
             </button>
@@ -1338,28 +1338,28 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
             onChange={e => setForm(f => ({ ...f, systemPromptTemplate: e.target.value }))}
             rows={12}
             placeholder={`Escribe aquí las instrucciones de tu vendedor.\n\nEjemplo:\n- Su nombre, estilo de comunicación y tono\n- Cómo identificar el problema del cliente\n- Cómo presentar y cerrar la venta\n- Reglas de negocio especiales\n\nUsa el botón "Cargar plantilla de ejemplo" para ver una plantilla lista.`}
-            className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-blue/40 font-mono resize-y min-h-[200px]"
+            className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-400/40 font-mono resize-y min-h-[200px]"
           />
-          <p className="text-xs text-dark-500 mt-1">
+          <p className="text-xs text-white/25 mt-1">
             Estas instrucciones se combinan con las reglas del bot y la base de conocimiento de productos.
           </p>
         </div>
 
         {/* Char limits */}
         <div>
-          <label className="block text-xs font-medium text-dark-300 mb-3">
+          <label className="block text-xs font-medium text-white/50 mb-3">
             Límite de caracteres por mensaje (opcional)
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(['maxCharsMensaje1', 'maxCharsMensaje2', 'maxCharsMensaje3'] as const).map((field, i) => (
               <div key={field}>
-                <label className="block text-[10px] text-dark-400 mb-1">Mensaje {i + 1}</label>
+                <label className="block text-[10px] text-white/35 mb-1">Mensaje {i + 1}</label>
                 <input
                   type="number"
                   value={form[field]}
                   onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
                   placeholder="Sin límite"
-                  className="w-full bg-dark-900/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-blue/40"
+                  className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-400/40"
                 />
               </div>
             ))}
@@ -1367,11 +1367,11 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
         </div>
 
         {/* Strict JSON badge */}
-        <div className="flex items-center gap-3 bg-neon-green/5 border border-neon-green/20 rounded-xl px-4 py-3">
-          <CheckCircle2 className="w-4 h-4 text-neon-green shrink-0" />
+        <div className="flex items-center gap-3 bg-amber-400/5 border border-amber-400/20 rounded-xl px-4 py-3">
+          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
           <div>
-            <div className="text-xs font-bold text-neon-green">strictJsonOutput: ACTIVO</div>
-            <div className="text-xs text-dark-400">
+            <div className="text-xs font-bold text-amber-400">strictJsonOutput: ACTIVO</div>
+            <div className="text-xs text-white/35">
               El bot siempre devuelve JSON válido con el schema requerido.
             </div>
           </div>
@@ -1380,7 +1380,7 @@ function PromptTab({ bot, onSaved }: { bot: Bot; onSaved: (updated: Partial<Bot>
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-neon-blue text-dark-950 font-bold rounded-xl hover:bg-neon-blue/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 bg-indigo-400 text-[#0B0B12] font-bold rounded-xl hover:bg-indigo-400/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
           {loading ? <Spinner /> : <Save className="w-4 h-4" />}
           Guardar plantilla
@@ -1595,20 +1595,20 @@ function ProductForm({
   }
 
   const inputClass =
-    'w-full bg-dark-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-neon-green/40 transition-colors'
+    'w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-amber-400/40 transition-colors'
   const textareaClass = `${inputClass} resize-y`
-  const labelClass = 'block text-xs font-medium text-dark-300 mb-1.5'
-  const sectionClass = 'glass-panel p-5 rounded-2xl space-y-4'
+  const labelClass = 'block text-xs font-medium text-white/50 mb-1.5'
+  const sectionClass = 'bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4'
   const sectionHeaderClass = 'flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-white flex items-center gap-2">
-          <Package className="w-4 h-4 text-neon-green" />
+          <Package className="w-4 h-4 text-amber-400" />
           {product ? 'Editar producto' : 'Nuevo producto'}
         </h3>
-        <button type="button" onClick={onCancel} className="text-dark-400 hover:text-white transition-colors">
+        <button type="button" onClick={onCancel} className="text-white/35 hover:text-white transition-colors">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -1617,7 +1617,7 @@ function ProductForm({
 
       {/* Basic info */}
       <div className={sectionClass}>
-        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-neon-green/70 rounded-full" />Información básica</div>
+        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-amber-400/70 rounded-full" />Información básica</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Nombre del producto *</label>
@@ -1634,7 +1634,7 @@ function ProductForm({
             <select
               value={form.category}
               onChange={e => setField('category', e.target.value)}
-              className={`${inputClass} appearance-none bg-dark-900/50`}
+              className={`${inputClass} appearance-none bg-[#0B0B12]/50`}
             >
               <option value="">Selecciona una categoría...</option>
               <option value="Salud y Bienestar">Salud y Bienestar</option>
@@ -1668,11 +1668,11 @@ function ProductForm({
             className="flex items-center gap-2 text-sm"
           >
             {form.active ? (
-              <ToggleRight className="w-7 h-7 text-neon-green" />
+              <ToggleRight className="w-7 h-7 text-amber-400" />
             ) : (
-              <ToggleLeft className="w-7 h-7 text-dark-500" />
+              <ToggleLeft className="w-7 h-7 text-white/25" />
             )}
-            <span className={form.active ? 'text-neon-green font-medium' : 'text-dark-400'}>
+            <span className={form.active ? 'text-amber-400 font-medium' : 'text-white/35'}>
               {form.active ? 'Producto activo' : 'Producto inactivo'}
             </span>
           </button>
@@ -1681,7 +1681,7 @@ function ProductForm({
 
       {/* Details */}
       <div className={sectionClass}>
-        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-neon-blue/70 rounded-full" />Descripción</div>
+        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-indigo-400/70 rounded-full" />Descripción</div>
         <div>
           <label className={labelClass}>Beneficios</label>
           <textarea
@@ -1716,7 +1716,7 @@ function ProductForm({
 
       {/* Prices */}
       <div className={sectionClass}>
-        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-neon-purple/70 rounded-full" />Precios</div>
+        <div className={sectionHeaderClass}><span className="w-1 h-3.5 bg-violet-400/70 rounded-full" />Precios</div>
         <div>
           <label className={labelClass}>Moneda</label>
           <select
@@ -1788,7 +1788,7 @@ function ProductForm({
       {/* Images Section */}
       <div className={sectionClass}>
         <div>
-          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-neon-green/70 rounded-full" />Imágenes principales</div>
+          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-amber-400/70 rounded-full" />Imágenes principales</div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(['img1', 'img2', 'img3'] as const).map(key => (
               <UploadField key={key} type="image" value={form[key]} onChange={v => setField(key, v)} placeholder="Subir foto principal" />
@@ -1797,7 +1797,7 @@ function ProductForm({
         </div>
 
         <div className="pt-2">
-          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-neon-green/70 rounded-full" />Más fotos del producto</div>
+          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-amber-400/70 rounded-full" />Más fotos del producto</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {(['img4', 'img5', 'img6', 'img7', 'img8'] as const).map((key, i) => (
               <UploadField key={key} type="image" value={form[key]} onChange={v => setField(key, v)} placeholder={`Foto adicional ${i + 1}`} />
@@ -1806,8 +1806,8 @@ function ProductForm({
         </div>
 
         <div className="pt-4 border-t border-white/5">
-          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-neon-blue/70 rounded-full" />Videos del producto</div>
-          <p className="text-xs text-dark-500 mb-3">El agente enviará estos videos si el cliente quiere ver el producto en acción. Máximo 90 segundos.</p>
+          <div className={`${sectionHeaderClass} mb-3`}><span className="w-1 h-3.5 bg-indigo-400/70 rounded-full" />Videos del producto</div>
+          <p className="text-xs text-white/25 mb-3">El agente enviará estos videos si el cliente quiere ver el producto en acción. Máximo 90 segundos.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(['vid1', 'vid2'] as const).map((key, i) => (
               <UploadField key={key} type="video" value={form[key as keyof ProductFormState] as string} onChange={v => setField(key, v)} placeholder={`Video del producto ${i + 1}`} />
@@ -1824,11 +1824,11 @@ function ProductForm({
           className="w-full flex items-center justify-between"
         >
           <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-            <span className="w-1 h-3.5 bg-neon-blue/70 rounded-full" />
+            <span className="w-1 h-3.5 bg-indigo-400/70 rounded-full" />
             Fotos de testimonios
-            <span className="text-[10px] normal-case font-normal text-dark-400">(el agente las envía ante dudas)</span>
+            <span className="text-[10px] normal-case font-normal text-white/35">(el agente las envía ante dudas)</span>
           </div>
-          <ChevronRight className={`w-4 h-4 text-dark-400 transition-transform ${showTestimonialPhotos ? 'rotate-90' : ''}`} />
+          <ChevronRight className={`w-4 h-4 text-white/35 transition-transform ${showTestimonialPhotos ? 'rotate-90' : ''}`} />
         </button>
         {showTestimonialPhotos && (
           <div className="space-y-3 pt-2">
@@ -1859,15 +1859,15 @@ function ProductForm({
           className="w-full flex items-center justify-between"
         >
           <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
-            <span className="w-1 h-3.5 bg-neon-purple/70 rounded-full" />
+            <span className="w-1 h-3.5 bg-violet-400/70 rounded-full" />
             Videos de testimonios
-            <span className="text-[10px] bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded border border-neon-purple/30 normal-case font-normal">NUEVO</span>
+            <span className="text-[10px] bg-violet-400/20 text-violet-400 px-2 py-0.5 rounded border border-violet-400/30 normal-case font-normal">NUEVO</span>
           </div>
-          <ChevronRight className={`w-4 h-4 text-dark-400 transition-transform ${showTestimonialVideos ? 'rotate-90' : ''}`} />
+          <ChevronRight className={`w-4 h-4 text-white/35 transition-transform ${showTestimonialVideos ? 'rotate-90' : ''}`} />
         </button>
         {showTestimonialVideos && (
           <div className="space-y-3 pt-2">
-            <p className="text-xs text-dark-500">El agente enviará estos videos cuando el cliente necesite mayor confianza. Máximo 90 segundos por video.</p>
+            <p className="text-xs text-white/25">El agente enviará estos videos cuando el cliente necesite mayor confianza. Máximo 90 segundos por video.</p>
             {[1, 2, 3, 4, 5, 6, 7].map(n => {
               const vidLabelKey = `test${n}VidLabel` as keyof ProductFormState
               const vidUrlKey = `test${n}VidUrl` as keyof ProductFormState
@@ -1893,14 +1893,14 @@ function ProductForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 bg-dark-800 border border-white/10 text-dark-300 font-medium rounded-xl hover:bg-dark-700 transition-colors text-sm"
+          className="flex-1 py-3 bg-white/4 border border-white/10 text-white/50 font-medium rounded-xl hover:bg-white/5 transition-colors text-sm"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 py-3 bg-neon-green text-dark-950 font-bold rounded-xl hover:bg-neon-green/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors text-sm"
+          className="flex-1 py-3 bg-amber-400 text-[#0B0B12] font-bold rounded-xl hover:bg-amber-400/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors text-sm"
         >
           {loading ? <Spinner /> : <Save className="w-4 h-4" />}
           {product ? 'Actualizar' : 'Crear producto'}
@@ -1942,38 +1942,38 @@ function ShareProductModal({ product, onClose }: { product: Product; onClose: ()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
-      <div className="glass-panel rounded-2xl border border-white/10 p-6 w-full max-w-sm space-y-4">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-neon-blue" />
+            <Share2 className="w-4 h-4 text-indigo-400" />
             <h3 className="font-bold text-white text-sm">Compartir producto</h3>
           </div>
-          <button onClick={onClose} className="text-dark-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/35 hover:text-white transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="text-xs text-dark-400 bg-white/5 rounded-xl p-3 border border-white/5">
+        <div className="text-xs text-white/35 bg-white/5 rounded-xl p-3 border border-white/5">
           <p className="font-semibold text-white mb-1">📋 {product.name}</p>
-          El destinatario recibirá una <span className="text-neon-green">copia independiente</span> del producto.
+          El destinatario recibirá una <span className="text-amber-400">copia independiente</span> del producto.
           Podrá editarla libremente sin afectar el tuyo.
         </div>
 
         <form onSubmit={handleShare} className="space-y-3">
           <div>
-            <label className="text-xs text-dark-400 mb-1 block">Username o email del destinatario</label>
+            <label className="text-xs text-white/35 mb-1 block">Username o email del destinatario</label>
             <input
               type="text"
               value={identifier}
               onChange={e => setIdentifier(e.target.value)}
               placeholder="@usuario o correo@email.com"
-              className="w-full bg-dark-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-dark-500 focus:outline-none focus:border-neon-blue/40"
+              className="w-full bg-[#0B0B12] border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-indigo-400/40"
               disabled={loading}
             />
           </div>
 
           {result && (
-            <div className={`text-xs rounded-lg px-3 py-2 ${result.ok ? 'bg-neon-green/10 text-neon-green border border-neon-green/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+            <div className={`text-xs rounded-lg px-3 py-2 ${result.ok ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
               {result.ok ? '✓ ' : '✕ '}{result.message}
             </div>
           )}
@@ -1982,14 +1982,14 @@ function ShareProductModal({ product, onClose }: { product: Product; onClose: ()
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 rounded-xl border border-white/10 text-dark-400 hover:text-white text-sm transition-colors"
+              className="flex-1 py-2 rounded-xl border border-white/10 text-white/35 hover:text-white text-sm transition-colors"
             >
               Cerrar
             </button>
             <button
               type="submit"
               disabled={loading || !identifier.trim()}
-              className="flex-1 py-2 rounded-xl bg-neon-blue/20 text-neon-blue border border-neon-blue/30 hover:bg-neon-blue/30 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-2 rounded-xl bg-indigo-400/20 text-indigo-400 border border-indigo-400/30 hover:bg-indigo-400/30 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
               Compartir
@@ -2091,12 +2091,12 @@ function ProductsTab({ bot }: { bot: Bot }) {
       )}
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-dark-400">
+        <div className="text-sm text-white/35">
           {assigned.length} asignado{assigned.length !== 1 ? 's' : ''} · {available.length} disponible{available.length !== 1 ? 's' : ''} en catálogo
         </div>
         <button
           onClick={() => { setEditingProduct(null); setShowForm(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-green text-dark-950 font-bold rounded-xl text-sm hover:bg-neon-green/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-amber-400 text-[#0B0B12] font-bold rounded-xl text-sm hover:bg-amber-400/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Nuevo producto
@@ -2105,38 +2105,38 @@ function ProductsTab({ bot }: { bot: Bot }) {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-dark-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-white/35" />
         </div>
       ) : (
         <>
           {/* Assigned products */}
           <div>
-            <div className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-2">
+            <div className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">
               Asignados a este bot
             </div>
             {assigned.length === 0 ? (
-              <div className="glass-panel p-8 rounded-2xl text-center">
-                <ShoppingBag className="w-8 h-8 text-dark-600 mx-auto mb-2" />
-                <div className="text-dark-400 text-sm">Sin productos asignados</div>
-                <div className="text-dark-500 text-xs mt-1">Crea un nuevo producto o asigna uno del catálogo.</div>
+              <div className="bg-white/5 border border-white/10 p-8 rounded-2xl text-center">
+                <ShoppingBag className="w-8 h-8 text-white/15 mx-auto mb-2" />
+                <div className="text-white/35 text-sm">Sin productos asignados</div>
+                <div className="text-white/25 text-xs mt-1">Crea un nuevo producto o asigna uno del catálogo.</div>
               </div>
             ) : (
               <div className="space-y-2">
                 {assigned.map(product => (
                   <div
                     key={product.id}
-                    className="glass-panel p-4 rounded-xl flex items-center gap-4 group hover:bg-white/5 transition-colors"
+                    className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-4 group hover:bg-white/5 transition-colors"
                   >
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${product.active ? 'bg-neon-green shadow-[0_0_6px_rgba(0,255,157,0.5)]' : 'bg-dark-600'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${product.active ? 'bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.5)]' : 'bg-white/8'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-white text-sm truncate">{product.name}</div>
-                      <div className="text-xs text-dark-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                      <div className="text-xs text-white/35 mt-0.5 flex items-center gap-2 flex-wrap">
                         {product.category && <span>{product.category}</span>}
                         {product.priceUnit && <span>{product.currency ?? 'USD'} {product.priceUnit}</span>}
                         {product.imageMainUrls.length > 0 && <span>{product.imageMainUrls.length} img</span>}
-                        {!product.active && <span className="text-dark-600 italic">inactivo</span>}
+                        {!product.active && <span className="text-white/15 italic">inactivo</span>}
                         {product.sharedByUsername && (
-                          <span className="flex items-center gap-1 text-neon-blue/70">
+                          <span className="flex items-center gap-1 text-indigo-400/70">
                             <Share2 className="w-2.5 h-2.5" />
                             de @{product.sharedByUsername}
                           </span>
@@ -2146,14 +2146,14 @@ function ProductsTab({ bot }: { bot: Bot }) {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => setSharingProduct(product)}
-                        className="p-2 hover:bg-neon-blue/10 rounded-lg transition-colors text-dark-400 hover:text-neon-blue"
+                        className="p-2 hover:bg-indigo-400/10 rounded-lg transition-colors text-white/35 hover:text-indigo-400"
                         title="Compartir con otro usuario"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleEdit(product)}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-dark-400 hover:text-white"
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/35 hover:text-white"
                         title="Editar"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -2161,7 +2161,7 @@ function ProductsTab({ bot }: { bot: Bot }) {
                       <button
                         onClick={() => handleUnassign(product.id)}
                         disabled={actioning === product.id}
-                        className="p-2 hover:bg-yellow-500/10 rounded-lg transition-colors text-dark-400 hover:text-yellow-400 disabled:opacity-50"
+                        className="p-2 hover:bg-yellow-500/10 rounded-lg transition-colors text-white/35 hover:text-yellow-400 disabled:opacity-50"
                         title="Quitar del agente"
                       >
                         {actioning === product.id ? <Spinner /> : <X className="w-3.5 h-3.5" />}
@@ -2176,19 +2176,19 @@ function ProductsTab({ bot }: { bot: Bot }) {
           {/* Available catalog products */}
           {available.length > 0 && (
             <div>
-              <div className="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-2">
+              <div className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">
                 Del catálogo — agregar a este bot
               </div>
               <div className="space-y-2">
                 {available.map(product => (
                   <div
                     key={product.id}
-                    className="glass-panel p-4 rounded-xl flex items-center gap-4 group hover:bg-white/5 transition-colors opacity-60 hover:opacity-100"
+                    className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-4 group hover:bg-white/5 transition-colors opacity-60 hover:opacity-100"
                   >
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${product.active ? 'bg-neon-green/50' : 'bg-dark-600'}`} />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${product.active ? 'bg-amber-400/50' : 'bg-white/8'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-white text-sm truncate">{product.name}</div>
-                      <div className="text-xs text-dark-400 mt-0.5 flex items-center gap-2">
+                      <div className="text-xs text-white/35 mt-0.5 flex items-center gap-2">
                         {product.category && <span>{product.category}</span>}
                         {product.priceUnit && <span>{product.currency ?? 'USD'} {product.priceUnit}</span>}
                       </div>
@@ -2196,7 +2196,7 @@ function ProductsTab({ bot }: { bot: Bot }) {
                     <button
                       onClick={() => handleAssign(product)}
                       disabled={actioning === product.id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-neon-green/10 text-neon-green hover:bg-neon-green/20 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
                     >
                       {actioning === product.id ? <Spinner /> : <Plus className="w-3 h-3" />}
                       Asignar
@@ -2258,20 +2258,20 @@ function FollowUpTab({
 
   return (
     <div className="max-w-2xl space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-all">
-      <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-6">
+      <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center">
-            <Bell className="w-5 h-5 text-neon-green" />
+          <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
+            <Bell className="w-5 h-5 text-amber-400" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Configuración de Seguimientos</h3>
-            <p className="text-sm text-dark-400 mt-0.5">Define los intervalos para re-interactuar con clientes.</p>
+            <p className="text-sm text-white/35 mt-0.5">Define los intervalos para re-interactuar con clientes.</p>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-dark-300 uppercase tracking-widest pl-1">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest pl-1">
               1er Seguimiento
             </label>
             <div className="relative group">
@@ -2280,16 +2280,16 @@ function FollowUpTab({
                 min="1"
                 value={f1}
                 onChange={e => setF1(Number(e.target.value))}
-                className="w-full bg-dark-900/50 border border-white/10 group-hover:border-white/20 focus:border-neon-green/40 rounded-xl px-4 py-3 text-sm text-white transition-all outline-none"
+                className="w-full bg-[#0B0B12]/50 border border-white/10 group-hover:border-white/20 focus:border-amber-400/40 rounded-xl px-4 py-3 text-sm text-white transition-all outline-none"
                 placeholder="Ej: 15"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-dark-500 font-bold uppercase tracking-tighter">Minutos</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-white/25 font-bold uppercase tracking-tighter">Minutos</span>
             </div>
-            <p className="text-[10px] text-dark-500 italic pl-1">Por defecto: 15 min.</p>
+            <p className="text-[10px] text-white/25 italic pl-1">Por defecto: 15 min.</p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-dark-300 uppercase tracking-widest pl-1">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest pl-1">
               2do Seguimiento
             </label>
             <div className="relative group">
@@ -2298,12 +2298,12 @@ function FollowUpTab({
                 min="1"
                 value={f2}
                 onChange={e => setF2(Number(e.target.value))}
-                className="w-full bg-dark-900/50 border border-white/10 group-hover:border-white/20 focus:border-neon-green/40 rounded-xl px-4 py-3 text-sm text-white transition-all outline-none"
+                className="w-full bg-[#0B0B12]/50 border border-white/10 group-hover:border-white/20 focus:border-amber-400/40 rounded-xl px-4 py-3 text-sm text-white transition-all outline-none"
                 placeholder="Ej: 4320"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-dark-500 font-bold uppercase tracking-tighter">Minutos</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] text-white/25 font-bold uppercase tracking-tighter">Minutos</span>
             </div>
-            <p className="text-[10px] text-dark-500 italic pl-1">Por defecto: 4320 min (3 días).</p>
+            <p className="text-[10px] text-white/25 italic pl-1">Por defecto: 4320 min (3 días).</p>
           </div>
 
           <div className="md:col-span-2 flex items-center justify-between gap-4 pt-2">
@@ -2314,7 +2314,7 @@ function FollowUpTab({
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-neon-green text-black rounded-xl text-sm font-bold hover:bg-neon-green/90 transition-all disabled:opacity-50 shrink-0 shadow-lg shadow-neon-green/10"
+              className="flex items-center gap-2 px-6 py-3 bg-amber-400 text-black rounded-xl text-sm font-bold hover:bg-amber-400/90 transition-all disabled:opacity-50 shrink-0 shadow-lg shadow-amber-400/10"
             >
               {saving ? <Spinner /> : <Check className="w-4 h-4" />}
               Guardar Cambios
@@ -2323,13 +2323,13 @@ function FollowUpTab({
         </form>
       </div>
 
-      <div className="bg-neon-green/5 border border-neon-green/10 rounded-2xl p-4 flex gap-4">
-        <div className="w-10 h-10 rounded-full bg-neon-green/10 flex items-center justify-center shrink-0">
-          <Zap className="w-5 h-5 text-neon-green" />
+      <div className="bg-amber-400/5 border border-amber-400/10 rounded-2xl p-4 flex gap-4">
+        <div className="w-10 h-10 rounded-full bg-amber-400/10 flex items-center justify-center shrink-0">
+          <Zap className="w-5 h-5 text-amber-400" />
         </div>
         <div>
           <h4 className="text-sm font-bold text-white">¿Cómo funciona?</h4>
-          <p className="text-xs text-dark-300 mt-1 leading-relaxed">
+          <p className="text-xs text-white/50 mt-1 leading-relaxed">
             El sistema calculará el tiempo desde el <strong>último mensaje enviado por el bot</strong>.
             Si el cliente no responde en ese intervalo, el agente enviará un mensaje automático.
             Los seguimientos se detienen si el cliente compra o si vuelve a escribir.
@@ -2411,15 +2411,15 @@ function QRTab({ bot }: { bot: Bot }) {
   return (
     <div className="space-y-6">
       {/* Estado */}
-      <div className="glass-panel p-5 rounded-2xl flex items-center justify-between">
+      <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
         <div>
           <div className="text-sm font-bold text-white flex items-center gap-2">
             {status === 'connected'
-              ? <Wifi className="w-4 h-4 text-neon-green" />
-              : <WifiOff className="w-4 h-4 text-dark-400" />}
+              ? <Wifi className="w-4 h-4 text-amber-400" />
+              : <WifiOff className="w-4 h-4 text-white/35" />}
             {status === 'connected' ? 'Conectado' : status === 'qr_ready' ? 'Esperando escaneo' : status === 'connecting' ? 'Conectando...' : 'Desconectado'}
           </div>
-          {phone && <div className="text-xs text-dark-400 mt-0.5">📱 +{phone}</div>}
+          {phone && <div className="text-xs text-white/35 mt-0.5">📱 +{phone}</div>}
         </div>
         <div className="flex gap-2">
           {status === 'connected' ? (
@@ -2433,7 +2433,7 @@ function QRTab({ bot }: { bot: Bot }) {
             <button
               onClick={handleConnect}
               disabled={connecting || status === 'connecting' || status === 'qr_ready'}
-              className="flex items-center gap-2 px-3 py-2 bg-neon-green/10 border border-neon-green/30 text-neon-green hover:bg-neon-green/20 rounded-xl text-xs font-medium transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-3 py-2 bg-amber-400/10 border border-amber-400/30 text-amber-400 hover:bg-amber-400/20 rounded-xl text-xs font-medium transition-colors disabled:opacity-50"
             >
               {connecting || status === 'connecting' ? <Spinner /> : <RefreshCw className="w-3.5 h-3.5" />}
               {status === 'qr_ready' ? 'Escanea el QR' : 'Conectar'}
@@ -2446,44 +2446,44 @@ function QRTab({ bot }: { bot: Bot }) {
 
       {/* QR */}
       {status === 'qr_ready' && qrBase64 && (
-        <div className="glass-panel p-6 rounded-2xl text-center space-y-4">
+        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl text-center space-y-4">
           <div className="flex items-center gap-2 justify-center text-sm font-bold text-white">
-            <QrCode className="w-4 h-4 text-neon-green" />
+            <QrCode className="w-4 h-4 text-amber-400" />
             Escanea con WhatsApp
           </div>
-          <p className="text-xs text-dark-400">
+          <p className="text-xs text-white/35">
             Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo
           </p>
           <div className="flex justify-center">
             <img
               src={qrBase64}
               alt="QR WhatsApp"
-              className="w-56 h-56 rounded-2xl border-4 border-neon-green/30 bg-white p-2"
+              className="w-56 h-56 rounded-2xl border-4 border-amber-400/30 bg-white p-2"
             />
           </div>
-          <p className="text-[11px] text-dark-500">El QR se actualiza automáticamente cada 20 segundos.</p>
+          <p className="text-[11px] text-white/25">El QR se actualiza automáticamente cada 20 segundos.</p>
         </div>
       )}
 
       {/* Conectado */}
       {status === 'connected' && (
-        <div className="glass-panel p-6 rounded-2xl border border-neon-green/20 text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center mx-auto">
-            <Wifi className="w-6 h-6 text-neon-green" />
+        <div className="bg-white/5 border border-amber-400/20 p-6 rounded-2xl text-center space-y-2">
+          <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center mx-auto">
+            <Wifi className="w-6 h-6 text-amber-400" />
           </div>
           <div className="text-sm font-bold text-white">¡Agente conectado correctamente!</div>
-          <div className="text-xs text-dark-400">El agente está activo y respondiendo mensajes en WhatsApp.</div>
+          <div className="text-xs text-white/35">El agente está activo y respondiendo mensajes en WhatsApp.</div>
         </div>
       )}
 
       {/* Desconectado - instrucciones */}
       {status === 'disconnected' && (
-        <div className="glass-panel p-6 rounded-2xl border border-white/5">
+        <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
           <h3 className="text-sm font-bold text-white mb-3">Pasos para conectar</h3>
           <ol className="space-y-3">
             {['Presiona "Conectar" arriba', 'Espera a que aparezca el código QR', 'Abre WhatsApp en tu teléfono', 'Ve a Dispositivos vinculados → Vincular dispositivo', 'Escanea el QR con tu cámara'].map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm text-dark-300">
-                <span className="w-5 h-5 rounded-full bg-neon-green/10 border border-neon-green/20 text-neon-green text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+              <li key={i} className="flex gap-3 text-sm text-white/50">
+                <span className="w-5 h-5 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                 {step}
               </li>
             ))}
@@ -2491,14 +2491,14 @@ function QRTab({ bot }: { bot: Bot }) {
         </div>
       )}
       {/* Zona peligrosa: limpiar memoria */}
-      <div className="glass-panel p-4 rounded-2xl border border-red-500/10">
+      <div className="bg-white/5 border border-red-500/15 p-4 rounded-2xl">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-bold text-white flex items-center gap-2">
               <Trash2 className="w-3.5 h-3.5 text-red-400" />
               Limpiar memoria
             </div>
-            <p className="text-xs text-dark-400 mt-0.5">
+            <p className="text-xs text-white/35 mt-0.5">
               Elimina el historial de conversaciones de todos los clientes.
             </p>
           </div>
@@ -2816,7 +2816,7 @@ function ChatsTab({ bot }: { bot: Bot }) {
                       setMarkSoldModal(true)
                     }}
                     className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0"
-                    style={{ background: 'rgba(0,255,136,0.12)', color: '#00FF88', border: '1px solid rgba(0,255,136,0.35)' }}
+                    style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.35)' }}
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Marcar Venta</span>
@@ -2931,10 +2931,10 @@ function ChatsTab({ bot }: { bot: Bot }) {
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
         onClick={e => { if (e.target === e.currentTarget) setMarkSoldModal(false) }}
       >
-        <div style={{ background: '#0D0F1E', border: '1px solid rgba(0,255,136,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 480 }}>
+        <div style={{ background: '#0B0B12', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 480 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ShoppingBag size={18} color="#00FF88" />
+              <ShoppingBag size={18} color="#F59E0B" />
               <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>Registrar venta por llamada</span>
             </div>
             <button onClick={() => setMarkSoldModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)' }}>
@@ -2964,7 +2964,7 @@ function ChatsTab({ bot }: { bot: Bot }) {
             <button
               onClick={handleMarkAsSold}
               disabled={markingSold}
-              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#00FF88', color: '#000', fontWeight: 700, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: markingSold ? 0.6 : 1 }}
+              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#000', fontWeight: 700, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, opacity: markingSold ? 0.6 : 1 }}
             >
               {markingSold ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
               Confirmar Venta
@@ -3065,13 +3065,13 @@ function BotDetailView({
       <div className="flex items-center gap-4">
         <button
           onClick={onBack}
-          className="p-2 hover:bg-white/5 rounded-lg transition-colors text-dark-400 hover:text-white"
+          className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/35 hover:text-white"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center shrink-0">
-            <Bot className="w-5 h-5 text-neon-green" />
+          <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+            <Bot className="w-5 h-5 text-amber-400" />
           </div>
           {editingName ? (
             <div className="flex items-center gap-2 flex-1">
@@ -3080,12 +3080,12 @@ function BotDetailView({
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveName()}
                 autoFocus
-                className="bg-dark-900/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-neon-green/40 flex-1 max-w-xs"
+                className="bg-[#0B0B12]/50 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-400/40 flex-1 max-w-xs"
               />
-              <button onClick={saveName} disabled={savingName} className="text-neon-green hover:text-neon-green/80">
+              <button onClick={saveName} disabled={savingName} className="text-amber-400 hover:text-amber-400/80">
                 {savingName ? <Spinner /> : <Check className="w-4 h-4" />}
               </button>
-              <button onClick={() => setEditingName(false)} className="text-dark-400 hover:text-white">
+              <button onClick={() => setEditingName(false)} className="text-white/35 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -3094,7 +3094,7 @@ function BotDetailView({
               <h2 className="font-bold text-white">{bot.name}</h2>
               <button
                 onClick={() => { setNewName(bot.name); setEditingName(true) }}
-                className="text-dark-500 hover:text-white transition-colors"
+                className="text-white/25 hover:text-white transition-colors"
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
@@ -3106,8 +3106,8 @@ function BotDetailView({
           disabled={savingStatus}
           title={bot.status === 'ACTIVE' ? 'Pausar agente' : 'Activar agente'}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all disabled:opacity-50 ${bot.status === 'ACTIVE'
-            ? 'bg-neon-green/10 text-neon-green border-neon-green/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
-            : 'bg-dark-700/50 text-dark-400 border-dark-600 hover:bg-neon-green/10 hover:text-neon-green hover:border-neon-green/20'
+            ? 'bg-amber-400/10 text-amber-400 border-amber-400/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30'
+            : 'bg-white/8 text-white/35 border-white/10 hover:bg-amber-400/10 hover:text-amber-400 hover:border-amber-400/20'
             }`}
         >
           {savingStatus ? (
@@ -3123,21 +3123,21 @@ function BotDetailView({
           onClick={handleDelete}
           disabled={deleting}
           title="Eliminar agente"
-          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-dark-500 hover:text-red-400 disabled:opacity-50"
+          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-white/25 hover:text-red-400 disabled:opacity-50"
         >
           {deleting ? <Spinner /> : <Trash2 className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-dark-900/50 p-1 rounded-xl border border-white/5 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-1 bg-[#0B0B12]/50 p-1 rounded-xl border border-white/5 overflow-x-auto scrollbar-hide">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${tab === t.id
-              ? 'bg-dark-700 text-white shadow-sm border border-white/10'
-              : 'text-dark-400 hover:text-dark-200 hover:bg-white/5'
+              ? 'bg-amber-500/10 text-amber-400 border border-amber-400/25'
+              : 'text-white/35 hover:text-white/70 hover:bg-white/5'
               }`}
           >
             {t.icon}
@@ -3220,27 +3220,27 @@ export default function WhatsAppPage() {
   const activeBots = bots.filter(b => b.status === 'ACTIVE').length
 
   return (
-    <div className="px-4 sm:px-6 pt-6 max-w-screen-2xl mx-auto pb-20 fade-in">
+    <div className="min-h-screen px-4 py-7 md:px-10 md:py-9 pb-20" style={{ background: '#0B0B12' }}>
       {/* Page Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link
           href="/dashboard/services"
           className="p-2 hover:bg-white/5 rounded-lg transition-colors group"
         >
-          <ArrowLeft className="w-5 h-5 text-dark-400 group-hover:text-white transition-colors" />
+          <ArrowLeft className="w-5 h-5 text-white/35 group-hover:text-white transition-colors" />
         </Link>
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-neon-green/10 flex items-center justify-center border border-neon-green/20 shadow-[0_0_15px_rgba(0,255,157,0.15)]">
-            <MessageCircle className="w-6 h-6 text-neon-green" />
+          <div className="w-12 h-12 rounded-xl bg-amber-400/10 flex items-center justify-center border border-amber-400/20 shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+            <MessageCircle className="w-6 h-6 text-amber-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               WhatsApp Bots
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-neon-green/10 text-neon-green border border-neon-green/20">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-amber-400/10 text-amber-400 border border-amber-400/20">
                 Multi-Tenant
               </span>
             </h1>
-            <p className="text-sm text-dark-300">Configura y gestiona tus agentes AI de ventas.</p>
+            <p className="text-sm text-white/50">Configura y gestiona tus agentes AI de ventas.</p>
           </div>
         </div>
       </div>
@@ -3256,33 +3256,33 @@ export default function WhatsAppPage() {
         <div className="space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="glass-panel p-4 rounded-xl flex items-center gap-3">
+            <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                <Bot className="w-5 h-5 text-dark-300" />
+                <Bot className="w-5 h-5 text-white/50" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-white">{bots.length}</div>
-                <div className="text-xs text-dark-400">Total agentes</div>
+                <div className="text-xs text-white/35">Total agentes</div>
               </div>
             </div>
-            <div className="glass-panel p-4 rounded-xl flex items-center gap-3 border border-neon-green/10">
-              <div className="w-10 h-10 rounded-xl bg-neon-green/10 border border-neon-green/20 flex items-center justify-center shrink-0">
-                <Zap className="w-5 h-5 text-neon-green" />
+            <div className="bg-white/5 border border-amber-400/20 p-4 rounded-xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+                <Zap className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-neon-green">{activeBots}</div>
-                <div className="text-xs text-dark-400">Activos ahora</div>
+                <div className="text-2xl font-bold text-amber-400">{activeBots}</div>
+                <div className="text-xs text-white/35">Activos ahora</div>
               </div>
             </div>
-            <div className="glass-panel p-4 rounded-xl flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-5 h-5 text-neon-blue" />
+            <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-400/10 border border-indigo-400/20 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-neon-blue">
+                <div className="text-2xl font-bold text-indigo-400">
                   {bots.reduce((acc, b) => acc + (b._count?.assignedProducts ?? 0), 0)}
                 </div>
-                <div className="text-xs text-dark-400">Productos totales</div>
+                <div className="text-xs text-white/35">Productos totales</div>
               </div>
             </div>
           </div>
@@ -3296,15 +3296,15 @@ export default function WhatsAppPage() {
           {/* Bot list */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-dark-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-white/35" />
             </div>
           ) : bots.length === 0 ? (
-            <div className="glass-panel p-12 rounded-2xl text-center border border-white/5">
-              <div className="w-16 h-16 rounded-2xl bg-neon-green/5 border border-neon-green/10 flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(0,255,157,0.08)]">
-                <Bot className="w-8 h-8 text-dark-500" />
+            <div className="bg-white/5 border border-white/8 p-12 rounded-2xl text-center">
+              <div className="w-16 h-16 rounded-2xl bg-amber-400/5 border border-amber-400/10 flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
+                <Bot className="w-8 h-8 text-white/25" />
               </div>
               <div className="text-white font-semibold mb-1">Sin agentes configurados</div>
-              <div className="text-dark-400 text-sm max-w-xs mx-auto">
+              <div className="text-white/35 text-sm max-w-xs mx-auto">
                 Crea tu primer agente AI de ventas usando el formulario de arriba.
               </div>
             </div>
@@ -3317,22 +3317,22 @@ export default function WhatsAppPage() {
           )}
 
           {/* How it works */}
-          <div className="glass-panel p-6 rounded-2xl border border-white/5">
+          <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-neon-green" />
+              <Zap className="w-4 h-4 text-amber-400" />
               ¿Cómo funciona?
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {([
-                { icon: <Plus className="w-4 h-4 text-neon-green" />, title: '1. Crea el agente', desc: 'Dale un nombre y obtén la URL de webhook.', border: 'border-l-neon-green/50', bg: 'bg-neon-green/5' },
-                { icon: <Key className="w-4 h-4 text-neon-blue" />, title: '2. Configura credenciales', desc: 'Agrega tus API keys de YCloud y OpenAI.', border: 'border-l-neon-blue/50', bg: 'bg-neon-blue/5' },
-                { icon: <ShoppingBag className="w-4 h-4 text-neon-purple" />, title: '3. Agrega productos', desc: 'Define la base de conocimiento del agente.', border: 'border-l-neon-purple/50', bg: 'bg-neon-purple/5' },
-                { icon: <Webhook className="w-4 h-4 text-neon-green" />, title: '4. Conecta YCloud', desc: 'Apunta el webhook en tu panel de YCloud.', border: 'border-l-neon-green/50', bg: 'bg-neon-green/5' },
+                { icon: <Plus className="w-4 h-4 text-amber-400" />, title: '1. Crea el agente', desc: 'Dale un nombre y obtén la URL de webhook.', border: 'border-l-amber-400/50', bg: 'bg-amber-400/5' },
+                { icon: <Key className="w-4 h-4 text-indigo-400" />, title: '2. Configura credenciales', desc: 'Agrega tus API keys de YCloud y OpenAI.', border: 'border-l-indigo-400/50', bg: 'bg-indigo-400/5' },
+                { icon: <ShoppingBag className="w-4 h-4 text-violet-400" />, title: '3. Agrega productos', desc: 'Define la base de conocimiento del agente.', border: 'border-l-violet-400/50', bg: 'bg-violet-400/5' },
+                { icon: <Webhook className="w-4 h-4 text-amber-400" />, title: '4. Conecta YCloud', desc: 'Apunta el webhook en tu panel de YCloud.', border: 'border-l-amber-400/50', bg: 'bg-amber-400/5' },
               ] as const).map((step, i) => (
                 <div key={i} className={`${step.bg} border border-white/5 border-l-2 ${step.border} rounded-xl p-4`}>
                   <div className="mb-2">{step.icon}</div>
                   <div className="text-xs font-bold text-white mb-1">{step.title}</div>
-                  <div className="text-[11px] text-dark-400 leading-relaxed">{step.desc}</div>
+                  <div className="text-[11px] text-white/35 leading-relaxed">{step.desc}</div>
                 </div>
               ))}
             </div>
