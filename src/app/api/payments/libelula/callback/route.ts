@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendPlanPurchaseConfirmedEmail } from '@/lib/email'
 
 /**
  * GET /api/payments/libelula/callback?transaction_id=UUID
@@ -69,6 +70,26 @@ export async function GET(req: NextRequest) {
     })
 
     console.log(`[Libélula callback] Plan ${packRequest.plan} ${isRenewal ? 'renewed' : 'activated'} for user ${packRequest.userId} until ${expiresAt.toISOString()}`)
+
+    // Send confirmation email (fire-and-forget)
+    const userRow = await prisma.user.findUnique({
+      where: { id: packRequest.userId },
+      select: { email: true, fullName: true },
+    })
+    if (userRow) {
+      sendPlanPurchaseConfirmedEmail(
+        userRow.email,
+        userRow.fullName ?? userRow.email,
+        {
+          id: packRequest.id,
+          plan: packRequest.plan as string,
+          price: Number(packRequest.price),
+          paymentMethod: 'Libélula QR',
+          createdAt: now,
+        }
+      ).catch(e => console.error('[email] libelula plan confirmed:', e))
+    }
+
     return NextResponse.redirect(`${appUrl}/dashboard?payment=success`)
   } catch (err) {
     console.error('[Libélula callback] Error activating plan:', err)
