@@ -58,9 +58,11 @@ export async function GET(req: NextRequest) {
         },
       })
 
+      const plan = packRequest.plan as string
       await tx.$executeRaw`
         UPDATE users
-        SET plan = CAST(${packRequest.plan} AS "UserPlan"),
+        SET plan = ${plan}::"UserPlan",
+            is_active = true,
             plan_expires_at = ${expiresAt}
         WHERE id = ${packRequest.userId}::uuid
       `
