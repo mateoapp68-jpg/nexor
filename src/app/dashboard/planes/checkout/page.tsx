@@ -273,54 +273,32 @@ function CheckoutContent() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/30 text-center">
-                          Elige cómo pagar <span style={{ color: '#FFD700' }}>${price} USD</span>
-                        </p>
-
-                        {/* Opción 1: QR */}
-                        <div className="rounded-2xl border border-white/10 p-4 space-y-3">
-                          <p className="text-xs font-black text-white/50 flex items-center gap-2">
-                            <QrCode size={13} /> Escanear QR
+                        {/* Waiting state — user is on Libélula's gateway */}
+                        <div className="rounded-2xl border border-white/10 p-5 flex flex-col items-center gap-3 text-center">
+                          <Loader2 size={22} className="animate-spin text-amber-400" />
+                          <p className="text-sm font-black text-white">Completá el pago en la ventana abierta</p>
+                          <p className="text-[11px] text-white/35 leading-relaxed">
+                            Tu plan se activará automáticamente al confirmar el pago.
                           </p>
-                          <div className="flex justify-center">
-                            {libelulaData.qrUrl ? (
-                              <div className="w-44 h-44 rounded-xl overflow-hidden bg-white p-2">
-                                <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
-                              </div>
-                            ) : (
-                              <div className="w-44 h-44 rounded-xl flex flex-col items-center justify-center gap-2 border border-white/10">
-                                <QrCode size={28} className="text-white/20" />
-                                <p className="text-[10px] text-white/30 text-center px-4">Usa el botón de abajo para pagar</p>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-center text-white/25">QR boliviano · Tigo Money, BNB, etc.</p>
                         </div>
 
-                        {/* Opción 2: Tarjeta */}
+                        {/* Reopen link in case popup was blocked */}
                         <a
                           href={libelulaData.cardUrl || libelulaData.paymentUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] text-black"
-                          style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
+                          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-black transition-all active:scale-[0.98]"
+                          style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)', color: '#FFD700' }}
                         >
-                          <ExternalLink size={14} /> Pagar con Tarjeta
+                          <ExternalLink size={13} /> Abrir página de pago
                         </a>
 
-                        {/* Polling */}
-                        <div className="flex items-center justify-center gap-2">
-                          {libelulaPolling && (
-                            <>
-                              <Loader2 size={12} className="animate-spin text-white/30" />
-                              <p className="text-[11px] text-white/30">Esperando confirmación de pago...</p>
-                            </>
-                          )}
-                        </div>
-
-                        <p className="text-[10px] text-center text-white/20">
-                          Tu plan se activa automáticamente al confirmar el pago
-                        </p>
+                        {libelulaPolling && (
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 size={11} className="animate-spin text-white/25" />
+                            <p className="text-[10px] text-white/25">Esperando confirmación...</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
