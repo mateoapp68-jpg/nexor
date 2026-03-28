@@ -26,6 +26,11 @@ export default function SetupPage() {
     const [adAccountsLoading, setAdAccountsLoading] = useState(false)
     const [adAccountSelecting, setAdAccountSelecting] = useState<string | null>(null)
     const [showAdSelector, setShowAdSelector] = useState(false)
+    const [pages, setPages] = useState<any[]>([])
+    const [pagesLoading, setPagesLoading] = useState(false)
+    const [pageSelecting, setPageSelecting] = useState<string | null>(null)
+    const [showPagesSelector, setShowPagesSelector] = useState(false)
+    const [selectedPage, setSelectedPage] = useState<any>(null)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
 
@@ -35,6 +40,7 @@ export default function SetupPage() {
             setTab('platforms')
             loadWaNumbers()
             loadAdAccounts()
+            loadPages()
         }
     }, [])
 
@@ -75,6 +81,33 @@ export default function SetupPage() {
             fetchData()
         } catch { setError('Error al seleccionar cuenta') }
         finally { setAdAccountSelecting(null) }
+    }
+
+    async function loadPages() {
+        setPagesLoading(true)
+        try {
+            const res = await fetch('/api/ads/integrations/meta/pages')
+            const data = await res.json()
+            setPages(data.pages || [])
+            setShowPagesSelector(true)
+            if (!data.pages?.length) setError('No se encontraron páginas de Facebook en esta cuenta.')
+        } catch { setError('Error al cargar páginas') }
+        finally { setPagesLoading(false) }
+    }
+
+    async function selectPage(p: any) {
+        setPageSelecting(p.id)
+        try {
+            await fetch('/api/ads/integrations/meta/pages/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pageId: p.id, pageName: p.name, pageAccessToken: p.accessToken })
+            })
+            setSelectedPage(p)
+            setSuccess(`✓ Página "${p.name}" seleccionada`)
+            setShowPagesSelector(false)
+        } catch { setError('Error al seleccionar página') }
+        finally { setPageSelecting(null) }
     }
 
     async function loadWaNumbers() {
@@ -348,6 +381,46 @@ export default function SetupPage() {
                                             <button onClick={() => selectAdAccount(a)} disabled={adAccountSelecting === a.id}
                                                 className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-all disabled:opacity-40 flex items-center gap-1">
                                                 {adAccountSelecting === a.id ? <Loader2 size={11} className="animate-spin" /> : null}
+                                                Seleccionar
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Facebook Pages */}
+                    {integrations.find(i => i.platform === 'META' && i.status === 'CONNECTED') && (
+                        <div className="mt-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <h3 className="font-bold text-sm">Página de Facebook</h3>
+                                    <p className="text-[11px] text-white/30">
+                                        {selectedPage ? `Activa: ${selectedPage.name}` : 'Selecciona la página para tus anuncios'}
+                                    </p>
+                                </div>
+                                <button onClick={loadPages} disabled={pagesLoading}
+                                    className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-40">
+                                    {pagesLoading ? <><Loader2 size={12} className="animate-spin" /> Cargando...</> : 'Cambiar página'}
+                                </button>
+                            </div>
+
+                            {showPagesSelector && pages.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[11px] text-amber-400 font-bold mb-2">Selecciona la página de Facebook:</p>
+                                    {pages.map((p: any) => (
+                                        <div key={p.id} className="flex items-center gap-3 bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+                                            <div className="w-8 h-8 rounded-xl bg-blue-600/15 border border-blue-600/20 flex items-center justify-center shrink-0">
+                                                <span className="text-blue-400 font-black text-sm">f</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-sm">{p.name}</p>
+                                                <p className="text-[11px] text-white/30">{p.id}</p>
+                                            </div>
+                                            <button onClick={() => selectPage(p)} disabled={pageSelecting === p.id}
+                                                className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-all disabled:opacity-40 flex items-center gap-1">
+                                                {pageSelecting === p.id ? <Loader2 size={11} className="animate-spin" /> : null}
                                                 Seleccionar
                                             </button>
                                         </div>
