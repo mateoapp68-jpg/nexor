@@ -103,13 +103,12 @@ export async function POST(req: NextRequest) {
     libelulaData = await libelulaRes.json()
 
     if (!libelulaRes.ok || !libelulaData.id_transaccion) {
-      console.error('[Libélula create] HTTP status:', libelulaRes.status, '| Body:', JSON.stringify(libelulaData))
-      const errMsg = typeof libelulaData.error === 'string' && libelulaData.error
-        ? libelulaData.error
-        : typeof libelulaData.message === 'string' && libelulaData.message
-          ? libelulaData.message
-          : `Error Libélula (código ${JSON.stringify(libelulaData.error ?? libelulaData)})`
-      return NextResponse.json({ error: errMsg }, { status: 502 })
+      const rawBody = JSON.stringify(libelulaData)
+      console.error(`[Libélula create] HTTP ${libelulaRes.status} | Request appkey: ${appkey} | Response: ${rawBody}`)
+      return NextResponse.json({
+        error: `Error Libélula — respuesta del servidor: ${rawBody}`,
+        debug: { httpStatus: libelulaRes.status, response: libelulaData }
+      }, { status: 502 })
     }
   } catch (err) {
     console.error('[Libélula create] fetch error', err)
