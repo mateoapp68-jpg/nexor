@@ -259,7 +259,7 @@ function CheckoutContent() {
                     {!libelulaData ? (
                       <div className="space-y-3">
                         <button
-                          onClick={() => handleLibelulaCreate(false)}
+                          onClick={() => handleLibelulaCreate(true)}
                           disabled={libelulaLoading}
                           className="w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 text-black"
                           style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)', boxShadow: '0 4px 24px rgba(255,215,0,0.25)' }}
@@ -267,19 +267,7 @@ function CheckoutContent() {
                           {libelulaLoading ? (
                             <><Loader2 size={15} className="animate-spin" /> Generando...</>
                           ) : (
-                            <><QrCode size={15} /> Pagar con QR</>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleLibelulaCreate(true)}
-                          disabled={libelulaLoading}
-                          className="w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
-                          style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.25)', color: '#FFD700' }}
-                        >
-                          {libelulaLoading ? (
-                            <><Loader2 size={15} className="animate-spin" /> Generando...</>
-                          ) : (
-                            <><ExternalLink size={15} /> Pagar con Tarjeta</>
+                            <><QrCode size={15} /> Pagar con QR o Tarjeta</>
                           )}
                         </button>
                       </div>
