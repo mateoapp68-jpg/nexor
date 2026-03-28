@@ -263,38 +263,45 @@ function CheckoutContent() {
                     ) : (
                       <div className="space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-white/30 text-center">
-                          Escanea el QR para pagar <span style={{ color: '#FFD700' }}>${price} USD</span>
+                          Elige cómo pagar <span style={{ color: '#FFD700' }}>${price} USD</span>
                         </p>
 
-                        {/* QR */}
-                        <div className="flex justify-center">
-                          <div className="w-52 h-52 rounded-2xl overflow-hidden bg-white p-2">
-                            <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
+                        {/* Opción 1: QR */}
+                        <div className="rounded-2xl border border-white/10 p-4 space-y-3">
+                          <p className="text-xs font-black text-white/50 flex items-center gap-2">
+                            <QrCode size={13} /> Escanear QR
+                          </p>
+                          <div className="flex justify-center">
+                            <div className="w-44 h-44 rounded-xl overflow-hidden bg-white p-2">
+                              <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
+                            </div>
                           </div>
+                          <p className="text-[10px] text-center text-white/25">QR boliviano · Tigo Money, BNB, etc.</p>
                         </div>
 
-                        {/* Open in browser */}
+                        {/* Opción 2: Tarjeta / Pasarela completa */}
                         <a
                           href={libelulaData.paymentUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all"
+                          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] text-black"
+                          style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
                         >
-                          <ExternalLink size={14} /> Abrir pasarela de pago
+                          <ExternalLink size={14} /> Pagar con Tarjeta o más opciones
                         </a>
 
-                        {/* Polling status */}
-                        <div className="flex items-center justify-center gap-2 py-2">
-                          {libelulaPolling ? (
+                        {/* Polling */}
+                        <div className="flex items-center justify-center gap-2">
+                          {libelulaPolling && (
                             <>
                               <Loader2 size={12} className="animate-spin text-white/30" />
                               <p className="text-[11px] text-white/30">Esperando confirmación de pago...</p>
                             </>
-                          ) : null}
+                          )}
                         </div>
 
                         <p className="text-[10px] text-center text-white/20">
-                          Tu plan se activará automáticamente al confirmar el pago
+                          Tu plan se activa automáticamente al confirmar el pago
                         </p>
                       </div>
                     )}

@@ -58,12 +58,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Check for existing pending request
+  // Check for existing pending request (only block manual PENDING, not Libélula awaiting payment)
   const existing = await prisma.packPurchaseRequest.findFirst({
     where: { userId: user.id, status: 'PENDING' },
   })
   if (existing) {
-    return NextResponse.json({ error: 'Ya tienes un pago pendiente. Espera a que sea procesado.' }, { status: 409 })
+    return NextResponse.json({ error: 'Ya tienes una solicitud manual pendiente. Espera a que sea procesada.' }, { status: 409 })
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -128,12 +128,13 @@ export async function POST(req: NextRequest) {
   // Store: LIBELULA:{id_transaccion}:RENEWAL or LIBELULA:{id_transaccion}
   const notes = `LIBELULA:${libelulaData.id_transaccion}${isRenewal ? ':RENEWAL' : ''}`
 
+  // Use PENDING_VERIFICATION for Libélula — won't block user if they don't pay
   await prisma.packPurchaseRequest.create({
     data: {
       userId: user.id,
       plan: plan as 'BASIC' | 'PRO' | 'ELITE',
       price,
-      status: 'PENDING',
+      status: 'PENDING_VERIFICATION',
       notes,
     },
   })

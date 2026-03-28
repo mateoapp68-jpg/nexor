@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const packRequest = await prisma.packPurchaseRequest.findFirst({
     where: {
       notes: { startsWith: `LIBELULA:${transactionId}` },
-      status: 'PENDING',
+      status: 'PENDING_VERIFICATION',
     },
   })
 
