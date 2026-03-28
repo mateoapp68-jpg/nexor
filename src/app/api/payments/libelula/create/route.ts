@@ -75,12 +75,15 @@ export async function POST(req: NextRequest) {
   const body = {
     appkey,
     descripcion_deuda: descripcion,
+    descripcion: descripcion,
+    nombre_deuda: descripcion,
     email_cliente: user.email,
     identificador_deuda: identificadorDeuda,
     callback_url: callbackUrl,
     lineas_detalle_deuda: [
       {
         desc_linea: descripcion,
+        descripcion: descripcion,
         importe_linea: price,
       },
     ],
