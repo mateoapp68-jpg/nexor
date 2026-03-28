@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Brain, Zap, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft, Settings2, Link2, Key, Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -10,6 +10,14 @@ const PLATFORMS = [
 ]
 
 export default function SetupPage() {
+    return (
+        <Suspense fallback={null}>
+            <SetupPageInner />
+        </Suspense>
+    )
+}
+
+function SetupPageInner() {
     const searchParams = useSearchParams()
     const [tab, setTab] = useState<'openai' | 'platforms'>('openai')
     const [apiKey, setApiKey] = useState('')
@@ -476,3 +484,4 @@ export default function SetupPage() {
         </div>
     )
 }
+
