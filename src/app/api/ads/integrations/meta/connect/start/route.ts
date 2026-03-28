@@ -13,6 +13,8 @@ const SCOPES = [
     'pages_read_engagement',
     'pages_manage_ads',
     'pages_manage_metadata',
+    'whatsapp_business_management',
+    'whatsapp_business_messaging',
     'public_profile'
 ].join(',')
 
