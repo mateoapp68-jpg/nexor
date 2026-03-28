@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
 
   const libelulaApi = testModeSetting?.value === 'true' ? LIBELULA_API_TEST : LIBELULA_API_PROD
   console.log(`[Libélula] usando ${testModeSetting?.value === 'true' ? 'TEST' : 'PRODUCCIÓN'}: ${libelulaApi}`)
+  console.log(`[Libélula] request body:`, JSON.stringify({ ...body, appkey: '***' }))
 
   try {
     const libelulaRes = await fetch(libelulaApi, {
