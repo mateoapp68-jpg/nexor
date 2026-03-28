@@ -11,10 +11,10 @@ import { MetaAdapter } from '@/lib/ads/adapters/meta'
 
 const BUCKET = 'ad-creatives'
 
-const ENC_KEY = process.env.ADS_ENCRYPTION_KEY
-if (!ENC_KEY) throw new Error('ADS_ENCRYPTION_KEY env var is not set')
-
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
+    const ENC_KEY = process.env.ADS_ENCRYPTION_KEY
+    if (!ENC_KEY) return NextResponse.json({ error: 'Configuración del servidor incompleta (ADS_ENCRYPTION_KEY)' }, { status: 500 })
+
     const user = await getAuthUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -136,12 +136,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         // each keyword to a real Meta interest ID via the Targeting Search API.
         let audienceInterests: Array<{ id: string; name: string }> = []
         if (campaign.platform === 'META') {
-            let audienceError = 'No se pudieron generar intereses de audiencia. Verifica tu API Key de OpenAI en Configuración → IA.'
             try {
                 const oaiConfig = await (prisma as any).openAIConfig.findUnique({ where: { userId: user.id } })
-                if (!oaiConfig?.isValid || !oaiConfig.apiKeyEnc) {
-                    audienceError = 'Configura tu API Key de OpenAI en Configuración → IA para publicar campañas de Meta con segmentación de audiencia.'
-                } else {
+                if (oaiConfig?.isValid && oaiConfig.apiKeyEnc) {
                     const oaiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY!)
                     const keywords = await generateAudienceInterests(campaign.brief, oaiKey, oaiConfig.model || 'gpt-5.1')
                     console.log(`[Publish] AI generated ${keywords.length} interest keywords:`, keywords.join(', '))
@@ -164,20 +161,12 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
                     audienceInterests = audienceInterests.slice(0, 10)
                     console.log(`[Publish] Resolved ${audienceInterests.length} Meta interests:`, audienceInterests.map(i => i.name).join(', '))
                     if (audienceInterests.length === 0) {
-                        audienceError = 'Meta no encontró intereses reales para las keywords generadas por IA. Intenta enriquecer el Brief de tu negocio con más detalles.'
+                        console.warn('[Publish] No audience interests found — publishing without interest targeting')
                     }
                 }
             } catch (e: any) {
-                console.error('[Publish] Audience interest generation failed:', e)
-                audienceError = e?.message || audienceError
-            }
-
-            if (audienceInterests.length === 0) {
-                await (prisma as any).adCampaignV2.update({
-                    where: { id: params.id },
-                    data: { status: 'DRAFT' }
-                })
-                return NextResponse.json({ error: audienceError }, { status: 400 })
+                // Non-blocking: if AI interest generation fails, publish without targeting
+                console.error('[Publish] Audience interest generation failed (non-blocking):', e)
             }
         }
 

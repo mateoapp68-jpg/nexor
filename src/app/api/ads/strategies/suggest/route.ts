@@ -4,12 +4,12 @@ import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/ads/encryption'
 
-const ENC_KEY = process.env.ADS_ENCRYPTION_KEY
-if (!ENC_KEY) throw new Error('ADS_ENCRYPTION_KEY env var is not set')
-
 import { generateStrategySuggestions } from '@/lib/ads/openai-ads'
 
 export async function POST(req: NextRequest) {
+    const ENC_KEY = process.env.ADS_ENCRYPTION_KEY
+    if (!ENC_KEY) return NextResponse.json({ error: 'Configuración del servidor incompleta (ADS_ENCRYPTION_KEY)' }, { status: 500 })
+
     const user = await getAuthUser()
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 

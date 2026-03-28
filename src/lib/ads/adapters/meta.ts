@@ -340,17 +340,23 @@ export class MetaAdapter implements IAdsAdapter {
                     // Poll until video is ready (Meta processes async — max 90s)
                     console.log(`[Meta] Waiting for video ${metaVideoId} to be ready...`)
                     const deadline = Date.now() + 90_000
+                    let videoReady = false
                     while (Date.now() < deadline) {
                         await new Promise(r => setTimeout(r, 4000))
-                        const statusRes = await this.api.get<any>(`/${this.apiVersion}/${metaVideoId}`, {
-                            params: { fields: 'status', access_token: accessToken }
-                        })
-                        const vs = statusRes?.status?.video_status
-                        console.log(`[Meta] Video ${metaVideoId} status: ${vs}`)
-                        if (vs === 'ready') break
-                        if (vs === 'error') throw new Error('Meta reportó un error procesando el video. Verifica que el archivo de video sea válido (MP4, H.264, máx 4GB).')
+                        try {
+                            const statusRes = await this.api.get<any>(`/${this.apiVersion}/${metaVideoId}`, {
+                                params: { fields: 'status', access_token: accessToken }
+                            })
+                            const vs = statusRes?.status?.video_status
+                            console.log(`[Meta] Video ${metaVideoId} status: ${vs}`)
+                            if (vs === 'ready') { videoReady = true; break }
+                            if (vs === 'error') throw new Error('Meta reportó un error procesando el video. Verifica que el archivo de video sea válido (MP4, H.264, máx 4GB).')
+                        } catch (pollErr: any) {
+                            if (pollErr.message?.includes('procesando el video')) throw pollErr
+                            console.warn(`[Meta] Video status poll error (retrying):`, pollErr.message)
+                        }
                     }
-                    if (Date.now() >= deadline) throw new Error('El video tardó demasiado en procesarse en Meta. Intenta con un archivo más pequeño.')
+                    if (!videoReady) throw new Error('El video tardó demasiado en procesarse en Meta. Intenta con un archivo más pequeño o mejor conexión.')
 
                     // Obtener thumbnail auto-generado por Meta (requerido en video_data)
                     const thumbRes = await this.api.get<any>(`/${this.apiVersion}/${metaVideoId}`, {
