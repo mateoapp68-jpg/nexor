@@ -52,12 +52,10 @@ export async function GET(req: Request) {
 
         // Return limits info for UI
         const limits = PLAN_LIMITS[user.plan] ?? PLAN_LIMITS.NONE
-        const billingStart = user.planExpiresAt
-            ? new Date(new Date(user.planExpiresAt).getTime() - 30 * 24 * 60 * 60 * 1000)
-            : new Date()
+        const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
         const [scheduledCount, monthlyCount] = await Promise.all([
             (prisma as any).socialPost.count({ where: { userId: user.id, status: 'SCHEDULED' } }),
-            (prisma as any).socialPost.count({ where: { userId: user.id, createdAt: { gte: billingStart } } }),
+            (prisma as any).socialPost.count({ where: { userId: user.id, createdAt: { gte: startOfMonth } } }),
         ])
 
         return NextResponse.json({ posts, limits, scheduledCount, monthlyCount })
@@ -96,14 +94,10 @@ export async function POST(req: Request) {
         // --- Plan limits ---
         const limits = PLAN_LIMITS[user.plan] ?? PLAN_LIMITS.NONE
 
-        // Billing period start = planExpiresAt - 30 days
-        const billingStart = user.planExpiresAt
-            ? new Date(new Date(user.planExpiresAt).getTime() - 30 * 24 * 60 * 60 * 1000)
-            : new Date()
-
+        const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
         const [scheduledCount, monthlyCount] = await Promise.all([
             (prisma as any).socialPost.count({ where: { userId: user.id, status: 'SCHEDULED' } }),
-            (prisma as any).socialPost.count({ where: { userId: user.id, createdAt: { gte: billingStart } } }),
+            (prisma as any).socialPost.count({ where: { userId: user.id, createdAt: { gte: startOfMonth } } }),
         ])
 
         // Monthly limit applies to all posts (scheduled + immediate)

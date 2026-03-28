@@ -14,12 +14,14 @@ import {
   Shield,
   Menu,
   X,
+  Coins,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/admin', label: 'Resumen', icon: LayoutDashboard, exact: true },
   { href: '/admin/users', label: 'Usuarios', icon: Users },
   { href: '/admin/purchases', label: 'Compras', icon: ShoppingBag },
+  { href: '/admin/credits', label: 'Créditos AI', icon: Coins },
   { href: '/admin/notifications', label: 'Notificaciones', icon: Bell },
   { href: '/admin/settings', label: 'Configuración', icon: Settings },
 ]

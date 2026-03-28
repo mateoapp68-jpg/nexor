@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Check, X, Zap, Sparkles, Crown, Layers,
-  MessageCircle, Store, Megaphone, FileText,
-  Users, Video, CheckCircle2, Clock, Timer,
-  RefreshCw, Phone, BookOpen, Play, ArrowLeft,
-  ChevronRight,
+  MessageCircle, Megaphone, Radio,
+  Users, CheckCircle2, Clock, Timer,
+  RefreshCw, ArrowLeft,
 } from 'lucide-react'
 
 // ─── Defaults (admin los puede cambiar desde /admin/settings) ─────────────────
@@ -28,13 +27,13 @@ const PACKS = [
     planId: 'BASIC',
     priceKey: 'PRICE_BASIC',
     name: 'Pack Básico',
-    tagline: 'Tu primer agente de ventas en WhatsApp',
+    tagline: 'Empieza a vender con un agente AI',
     icon: Zap,
     featured: false,
     sections: [
       {
         icon: MessageCircle,
-        title: 'Agente AI de Ventas',
+        title: 'Agentes AI · WhatsApp',
         features: [
           '1 agente AI con tu marca',
           'Responde y vende en WhatsApp automáticamente',
@@ -43,48 +42,37 @@ const PACKS = [
         ],
       },
       {
-        icon: Store,
-        title: 'Tienda Virtual',
+        icon: Radio,
+        title: 'Social Publisher',
         features: [
-          '1 tienda virtual con tu branding',
-          'QR de pago y catálogo online',
+          'Hasta 15 publicaciones por mes',
+          'Hasta 5 posts programados simultáneos',
+          'Facebook e Instagram',
         ],
       },
       {
-        icon: FileText,
-        title: 'Landing Pages con IA',
-        features: ['1 landing page generada con IA'],
-      },
-      {
         icon: Megaphone,
-        title: 'Anuncios con IA',
-        features: ['Hasta 5 anuncios/mes · Meta Ads'],
-      },
-      {
-        icon: BookOpen,
-        title: 'Marketplace',
-        features: ['Publica y vende tus propios cursos'],
-      },
-      {
-        icon: Play,
-        title: 'Clipping',
-        features: ['Gana por cada 1,000 vistas de tus clips'],
+        title: 'Ads Manager · Meta',
+        features: [
+          'Hasta 5 campañas por mes',
+          'Copies e imágenes generados por IA',
+        ],
       },
     ],
-    notIncluded: ['Acceso a nuevos lanzamientos exclusivos'],
+    notIncluded: ['Soporte prioritario', 'Acceso a nuevos lanzamientos'],
   },
   {
     id: 'pro',
     planId: 'PRO',
     priceKey: 'PRICE_PRO',
     name: 'Pack Pro',
-    tagline: 'Vende, anuncia y escala sin límites',
+    tagline: 'Escala tus ventas y anuncios sin límites',
     icon: Sparkles,
     featured: true,
     sections: [
       {
         icon: MessageCircle,
-        title: 'Agentes AI de Ventas',
+        title: 'Agentes AI · WhatsApp',
         features: [
           '2 agentes AI con tu marca',
           'Responde y vende en WhatsApp automáticamente',
@@ -93,61 +81,38 @@ const PACKS = [
         ],
       },
       {
-        icon: Store,
-        title: 'Tiendas Virtuales',
+        icon: Radio,
+        title: 'Social Publisher',
         features: [
-          '2 tiendas virtuales con branding completo',
-          'QR de pago y catálogo online',
+          'Hasta 30 publicaciones por mes',
+          'Hasta 10 posts programados simultáneos',
+          'Facebook e Instagram',
         ],
       },
       {
         icon: Megaphone,
-        title: 'Publicidad con IA',
+        title: 'Ads Manager · Meta',
         features: [
-          'Hasta 15 anuncios/mes · Meta Ads',
+          'Hasta 15 campañas por mes',
           'Copies e imágenes generados por IA',
           'Estrategias Advantage+ y Smart Segmentation',
         ],
       },
-      {
-        icon: FileText,
-        title: 'Landing Pages con IA',
-        features: [
-          '3 landing pages con IA',
-          'Slugs personalizados con tu URL',
-        ],
-      },
-      {
-        icon: BookOpen,
-        title: 'Marketplace & Clipping',
-        features: [
-          'Publica y vende tus propios cursos',
-          'Gana por cada 1,000 vistas de tus clips',
-        ],
-      },
-      {
-        icon: Video,
-        title: 'Capacitaciones',
-        features: [
-          'Capacitaciones en vivo por Zoom',
-          'Asesoramiento personalizado de 30 minutos',
-        ],
-      },
     ],
-    notIncluded: ['Acceso a nuevos lanzamientos exclusivos'],
+    notIncluded: ['Acceso a nuevos lanzamientos'],
   },
   {
     id: 'elite',
     planId: 'ELITE',
     priceKey: 'PRICE_ELITE',
     name: 'Pack Elite',
-    tagline: 'El máximo poder para líderes de red',
+    tagline: 'El máximo poder para líderes de negocio',
     icon: Crown,
     featured: false,
     sections: [
       {
         icon: MessageCircle,
-        title: 'Agentes AI de Ventas',
+        title: 'Agentes AI · WhatsApp',
         features: [
           '5 agentes AI con tu marca',
           'Responde y vende en WhatsApp automáticamente',
@@ -155,40 +120,26 @@ const PACKS = [
         ],
       },
       {
-        icon: Store,
-        title: 'Tiendas Virtuales',
+        icon: Radio,
+        title: 'Social Publisher',
         features: [
-          '5 tiendas virtuales con branding completo',
-          'QR de pago y catálogo online',
-        ],
-      },
-      {
-        icon: FileText,
-        title: 'Landing Pages con IA',
-        features: [
-          '6 landing pages generadas con IA',
-          'Páginas de alta conversión personalizadas',
+          'Hasta 50 publicaciones por mes',
+          'Hasta 20 posts programados simultáneos',
+          'Facebook e Instagram',
         ],
       },
       {
         icon: Megaphone,
-        title: 'Publicidad con IA',
+        title: 'Ads Manager · Meta',
         features: [
-          'Hasta 30 anuncios/mes · Meta Ads',
+          'Hasta 30 campañas por mes',
           'Copies e imágenes generados por IA',
-        ],
-      },
-      {
-        icon: BookOpen,
-        title: 'Marketplace & Clipping',
-        features: [
-          'Publica y vende tus propios cursos',
-          'Gana por cada 1,000 vistas de tus clips',
+          'Estrategias Advantage+ y Smart Segmentation',
         ],
       },
       {
         icon: Users,
-        title: 'Acceso Total',
+        title: 'Soporte Premium',
         features: [
           'Acceso exclusivo a nuevos lanzamientos',
           'Asesoramiento personalizado de 1 hora',
@@ -302,7 +253,7 @@ export default function PlanesPage() {
             Elige tu Plan
           </h1>
           <p className="text-sm text-white/30 max-w-md mx-auto leading-relaxed">
-            Bots de WhatsApp, tiendas y anuncios con IA — todo personalizado con tu marca.
+            Agentes AI de WhatsApp, Publisher de redes sociales y Ads Manager con IA — todo en una plataforma.
           </p>
 
           {currentPlan !== 'NONE' && (
