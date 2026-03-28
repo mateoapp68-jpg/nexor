@@ -74,8 +74,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ya tienes una solicitud manual pendiente. Espera a que sea procesada.' }, { status: 409 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  // Derive callback URL from the incoming request so it always matches the actual host
+  const reqUrl = new URL(req.url)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || `${reqUrl.protocol}//${reqUrl.host}`
   const callbackUrl = `${appUrl}/api/payments/libelula/callback`
+  console.log(`[Libélula] callback_url: ${callbackUrl}`)
   const identificadorDeuda = randomUUID()
 
   const descripcion = `${isRenewal ? 'Renovación' : PLAN_LABELS[plan]} — Nexor`
