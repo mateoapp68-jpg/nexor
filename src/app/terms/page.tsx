@@ -44,7 +44,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-white font-semibold text-base mb-2">8. Contacto</h2>
-            <p>Para consultas sobre estos términos, contactanos a través de la plataforma en <span className="text-amber-400">nexor.onrender.com</span>.</p>
+            <p>Para consultas sobre estos términos, contactanos a través de la plataforma en <span className="text-amber-400">nexor-itt9.onrender.com</span>.</p>
           </section>
 
         </div>
