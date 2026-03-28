@@ -59,6 +59,17 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     if (!campaign.dailyBudgetUSD || campaign.dailyBudgetUSD <= 0) {
         return NextResponse.json({ error: 'El presupuesto diario debe ser mayor a 0' }, { status: 400 })
     }
+    // Require at least one creative with primary text
+    const validCreatives = campaign.creatives.filter((c: any) => c.primaryText?.trim())
+    if (validCreatives.length === 0) {
+        return NextResponse.json({ error: 'Genera los textos del anuncio antes de publicar' }, { status: 400 })
+    }
+    // Require at least one creative with a valid media URL (image or video)
+    const isValidUrl = (url: string | null) => typeof url === 'string' && url.startsWith('http')
+    const hasMedia = campaign.creatives.some((c: any) => isValidUrl(c.mediaUrl))
+    if (!hasMedia) {
+        return NextResponse.json({ error: 'Agrega al menos una imagen o video al anuncio antes de publicar' }, { status: 400 })
+    }
 
     // Mark as publishing — all validations above must pass before this point
     await (prisma as any).adCampaignV2.update({
@@ -81,9 +92,11 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
             conversions: 'OUTCOME_SALES',
             leads: 'OUTCOME_LEADS',
             traffic: 'OUTCOME_TRAFFIC',
-            awareness: 'OUTCOME_AWARENESS'
+            awareness: 'OUTCOME_AWARENESS',
+            engagement: 'OUTCOME_ENGAGEMENT',
+            app_promotion: 'OUTCOME_APP_PROMOTION'
         }
-        const metaObjective = objectiveMap[campaign.strategy.objective] || 'OUTCOME_TRAFFIC'
+        const metaObjective = objectiveMap[(campaign.strategy.objective || '').toLowerCase()] || 'OUTCOME_TRAFFIC'
 
         // Parse locations: "CO" → country, "city:KEY:Name" → city
         const countries: string[] = []
@@ -113,7 +126,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
         // FIX: pass all creative copies so the adapter creates one ad per variation
         // Only include mediaUrl if it's a real HTTP URL (never blob:// or null)
-        const isValidUrl = (url: string | null) => typeof url === 'string' && url.startsWith('http')
         const creativeCopies = campaign.creatives
             .filter((c: any) => c.primaryText)
             .map((c: any) => ({

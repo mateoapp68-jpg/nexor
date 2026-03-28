@@ -317,7 +317,7 @@ export class MetaAdapter implements IAdsAdapter {
             try {
                 const copy = copies[i]
                 const assetUrl = copy.imageUrl || draft.assets?.[i]?.storageUrl || draft.assets?.[0]?.storageUrl
-                const isVideo = /\.(mp4|mov|avi|mkv|webm|m4v)(\?|$)/i.test(assetUrl || '')
+                const isVideo = /\.(mp4|mov|avi|mkv|webm|m4v)([?&#]|$)/i.test(assetUrl || '')
 
                 let creativePayload: any
 

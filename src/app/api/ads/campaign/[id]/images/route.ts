@@ -89,7 +89,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             imageUrl = urlData.publicUrl
         } else {
             // No reference image → use DALL-E 3 to generate from scratch
-            imageUrl = await generateAdImage({
+            const dalleUrl = await generateAdImage({
                 brief,
                 mediaType: campaign.strategy.mediaType,
                 slotIndex,
@@ -98,6 +98,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
                 quality: VALID_QUALITIES.includes(quality) ? quality : 'standard',
                 size: VALID_SIZES.includes(size) ? size : '1024x1024',
             })
+
+            // DALL-E URLs expire in ~1h — download and upload to Supabase for permanent storage
+            const imgRes = await fetch(dalleUrl)
+            if (!imgRes.ok) throw new Error('No se pudo descargar la imagen generada por DALL-E')
+            const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
+            const path = `ads/${user.id}/${params.id}/slot-${slotIndex}-gen-${Date.now()}.png`
+            const { error: uploadErr } = await supabaseAdmin.storage
+                .from(BUCKET)
+                .upload(path, imgBuffer, { contentType: 'image/png', upsert: true })
+            if (uploadErr) throw new Error(uploadErr.message)
+            const { data: urlData } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path)
+            imageUrl = urlData.publicUrl
         }
 
         // Persist to DB if creativeId given
