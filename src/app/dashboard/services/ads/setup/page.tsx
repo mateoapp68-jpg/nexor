@@ -43,13 +43,17 @@ function SetupPageInner() {
     const [success, setSuccess] = useState<string | null>(null)
 
     useEffect(() => {
-        fetchData()
-        if (searchParams.get('connected') === 'meta') {
-            setTab('platforms')
-            loadWaNumbers()
-            loadAdAccounts()
-            loadPages()
+        const init = async () => {
+            await fetchData()
+            if (searchParams.get('connected') === 'meta') {
+                setTab('platforms')
+                setShowAdSelector(true)
+                setShowPagesSelector(true)
+                setShowWaSelector(true)
+                await Promise.all([loadAdAccounts(), loadPages(), loadWaNumbers()])
+            }
         }
+        init()
     }, [])
 
     async function fetchData() {
@@ -68,10 +72,11 @@ function SetupPageInner() {
         try {
             const res = await fetch('/api/ads/integrations/meta/accounts')
             const data = await res.json()
+            if (data.error) throw new Error(data.error)
             setAdAccounts(data.accounts || [])
             setShowAdSelector(true)
-            if (!data.accounts?.length) setError('No se encontraron cuentas publicitarias en esta cuenta de Meta.')
-        } catch { setError('Error al cargar cuentas publicitarias') }
+            if (!data.accounts?.length) setError('No se encontraron cuentas publicitarias. Asegúrate de tener acceso a una cuenta publicitaria en Meta Business.')
+        } catch (e: any) { setError(`Cuentas publicitarias: ${e.message}`) }
         finally { setAdAccountsLoading(false) }
     }
 
@@ -96,10 +101,11 @@ function SetupPageInner() {
         try {
             const res = await fetch('/api/ads/integrations/meta/pages')
             const data = await res.json()
+            if (data.error) throw new Error(data.error)
             setPages(data.pages || [])
             setShowPagesSelector(true)
-            if (!data.pages?.length) setError('No se encontraron páginas de Facebook en esta cuenta.')
-        } catch { setError('Error al cargar páginas') }
+            if (!data.pages?.length) setError('No se encontraron páginas de Facebook. Asegúrate de ser administrador de al menos una Página.')
+        } catch (e: any) { setError(`Páginas: ${e.message}`) }
         finally { setPagesLoading(false) }
     }
 
@@ -123,10 +129,10 @@ function SetupPageInner() {
         try {
             const res = await fetch('/api/ads/integrations/meta/whatsapp-numbers')
             const data = await res.json()
+            if (data.error) throw new Error(data.error)
             setWaNumbers(data.phoneNumbers || [])
             setShowWaSelector(true)
-            if (!data.phoneNumbers?.length) setError('No se encontraron números de WhatsApp asociados a esta cuenta de Meta.')
-        } catch { setError('Error al cargar números de WhatsApp') }
+        } catch (e: any) { setError(`WhatsApp: ${e.message}`) }
         finally { setWaLoading(false) }
     }
 
