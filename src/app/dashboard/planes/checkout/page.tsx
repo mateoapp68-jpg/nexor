@@ -35,8 +35,9 @@ function CheckoutContent() {
   // Libélula state
   const [libelulaLoading, setLibelulaLoading] = useState(false)
   const [libelulaData, setLibelulaData] = useState<{
-    qrUrl: string
+    qrUrl?: string
     paymentUrl: string
+    cardUrl?: string
     transactionId: string
     priceBob?: number
     usdToBob?: number
@@ -108,8 +109,8 @@ function CheckoutContent() {
       if (!res.ok) throw new Error(data.error || 'Error al crear el pago')
       if (data.price && data.price > 0) setPrice(data.price)
       setLibelulaData(data)
-      if (openCard && data.paymentUrl) {
-        window.open(data.paymentUrl, '_blank')
+      if (openCard && (data.cardUrl || data.paymentUrl)) {
+        window.open(data.cardUrl || data.paymentUrl, '_blank')
       }
     } catch (err: unknown) {
       setLibelulaError(err instanceof Error ? err.message : 'Error al conectar con la pasarela de pago')
@@ -308,15 +309,15 @@ function CheckoutContent() {
                           <p className="text-[10px] text-center text-white/25">QR boliviano · Tigo Money, BNB, etc.</p>
                         </div>
 
-                        {/* Opción 2: Tarjeta / Pasarela completa */}
+                        {/* Opción 2: Tarjeta */}
                         <a
-                          href={libelulaData.paymentUrl}
+                          href={libelulaData.cardUrl || libelulaData.paymentUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] text-black"
                           style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
                         >
-                          <ExternalLink size={14} /> Pagar con Tarjeta o más opciones
+                          <ExternalLink size={14} /> Pagar con Tarjeta
                         </a>
 
                         {/* Polling */}

@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
     id_transaccion?: string
     url_pasarela_pagos?: string
     qr_simple_url?: string
+    url_tarjeta?: string
     error?: string
     message?: string
   }
@@ -151,6 +152,7 @@ export async function POST(req: NextRequest) {
     transactionId: libelulaData.id_transaccion,
     paymentUrl: libelulaData.url_pasarela_pagos,
     qrUrl: libelulaData.qr_simple_url,
+    cardUrl: libelulaData.url_tarjeta ?? libelulaData.url_pasarela_pagos,
     price: priceUsd,
     priceBob,
     usdToBob,
