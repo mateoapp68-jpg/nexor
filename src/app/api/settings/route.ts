@@ -17,6 +17,13 @@ export async function GET() {
     const map: Record<string, string> = {}
     settings.forEach(s => { map[s.key] = s.value })
 
+    // Expose derived Libélula availability — never expose the raw appkey publicly
+    const libelulaSetting = await prisma.appSetting.findUnique({ where: { key: 'LIBELULA_APPKEY' } })
+    const libelulaEnabledSetting = await prisma.appSetting.findUnique({ where: { key: 'LIBELULA_ENABLED' } })
+    const hasKey = !!(libelulaSetting?.value?.trim())
+    const isEnabled = libelulaEnabledSetting?.value === 'true'
+    map['LIBELULA_AVAILABLE'] = (hasKey && isEnabled) ? 'true' : 'false'
+
     return NextResponse.json({ settings: map }, {
       headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
     })

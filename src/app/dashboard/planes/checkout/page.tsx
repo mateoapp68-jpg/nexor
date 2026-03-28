@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, Clock, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, QrCode, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 import { PaymentGateway } from '@/components/PaymentGateway'
 
 const PLAN_LABELS: Record<string, string> = {
@@ -28,7 +28,19 @@ function CheckoutContent() {
 
   const [price, setPrice] = useState<number | null>(null)
   const [done, setDone] = useState(false)
-  const [error, setError] = useState('')
+  const [libelulaAvailable, setLibelulaAvailable] = useState(false)
+  const [manualAvailable, setManualAvailable] = useState(true)
+  const [payMethod, setPayMethod] = useState<'libelula' | 'manual'>('libelula')
+
+  // Libélula state
+  const [libelulaLoading, setLibelulaLoading] = useState(false)
+  const [libelulaData, setLibelulaData] = useState<{
+    qrUrl: string
+    paymentUrl: string
+    transactionId: string
+  } | null>(null)
+  const [libelulaError, setLibelulaError] = useState('')
+  const [libelulaPolling, setLibelulaPolling] = useState(false)
 
   useEffect(() => {
     if (!['BASIC', 'PRO', 'ELITE'].includes(planId)) {
@@ -43,17 +55,72 @@ function CheckoutContent() {
         const key = isRenewal ? 'PRICE_RENEWAL' : `PRICE_${planId}`
         const val = parseFloat(map[key])
         setPrice(val > 0 ? val : isRenewal ? PRICE_DEFAULTS.RENEWAL : PRICE_DEFAULTS[planId])
+        const hasLibelula = map['LIBELULA_AVAILABLE'] === 'true'
+        const hasManual = map['STORE_PAYMENT_MANUAL'] !== 'false'
+        setLibelulaAvailable(hasLibelula)
+        setManualAvailable(hasManual)
+        if (!hasLibelula) setPayMethod('manual')
       })
       .catch(() => {
         setPrice(isRenewal ? PRICE_DEFAULTS.RENEWAL : PRICE_DEFAULTS[planId])
+        setPayMethod('manual')
       })
   }, [planId, isRenewal, router])
+
+  // Poll for payment confirmation
+  useEffect(() => {
+    if (!libelulaData || done) return
+    setLibelulaPolling(true)
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/payments/libelula/status-check?transaction_id=${libelulaData.transactionId}`)
+        const data = await res.json()
+        if (data.paid) {
+          clearInterval(interval)
+          setLibelulaPolling(false)
+          setDone(true)
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000)
+
+    return () => {
+      clearInterval(interval)
+      setLibelulaPolling(false)
+    }
+  }, [libelulaData, done])
+
+  const handleLibelulaCreate = async () => {
+    if (!price) return
+    setLibelulaLoading(true)
+    setLibelulaError('')
+    try {
+      const res = await fetch('/api/payments/libelula/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Send plan + isRenewal only — backend fetches real price from DB
+        body: JSON.stringify({ plan: planId, isRenewal }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al crear el pago')
+      // Use server-confirmed price if returned
+      if (data.price && data.price > 0) setPrice(data.price)
+      setLibelulaData(data)
+    } catch (err: unknown) {
+      setLibelulaError(err instanceof Error ? err.message : 'Error al conectar con la pasarela de pago')
+    } finally {
+      setLibelulaLoading(false)
+    }
+  }
 
   const handleSubmitPayment = async (proofUrl: string): Promise<'approved' | 'pending_verification'> => {
     const res = await fetch('/api/pack-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: planId, price, paymentProofUrl: proofUrl }),
+      // No enviamos price — el backend lo busca en DB para evitar manipulación
+      body: JSON.stringify({ plan: planId, isRenewal, paymentProofUrl: proofUrl }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -104,19 +171,25 @@ function CheckoutContent() {
                   <CheckCircle2 size={30} style={{ color: '#FFD700' }} />
                 </div>
                 <div>
-                  <p className="text-base font-black text-white mb-1">¡Solicitud enviada!</p>
+                  <p className="text-base font-black text-white mb-1">
+                    {libelulaData ? '¡Pago confirmado!' : '¡Solicitud enviada!'}
+                  </p>
                   <p className="text-xs text-white/40 leading-relaxed max-w-xs">
-                    Tu comprobante fue recibido. El equipo lo revisará y activará tu plan en menos de 24 horas.
+                    {libelulaData
+                      ? 'Tu pago fue verificado. Tu plan ya está activo.'
+                      : 'Tu comprobante fue recibido. El equipo lo revisará y activará tu plan en menos de 24 horas.'}
                   </p>
                 </div>
 
-                <div className="w-full rounded-2xl p-4 flex items-start gap-3"
-                  style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.1)' }}>
-                  <Clock size={14} style={{ color: '#FFD700' }} className="shrink-0 mt-0.5" />
-                  <p className="text-xs text-white/40 leading-relaxed">
-                    Recibirás una notificación cuando tu plan esté activo. También puedes revisar el estado en la sección <strong className="text-white/60">Planes</strong>.
-                  </p>
-                </div>
+                {!libelulaData && (
+                  <div className="w-full rounded-2xl p-4 flex items-start gap-3"
+                    style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.1)' }}>
+                    <Clock size={14} style={{ color: '#FFD700' }} className="shrink-0 mt-0.5" />
+                    <p className="text-xs text-white/40 leading-relaxed">
+                      Recibirás una notificación cuando tu plan esté activo. También puedes revisar el estado en la sección <strong className="text-white/60">Planes</strong>.
+                    </p>
+                  </div>
+                )}
 
                 <Link
                   href="/dashboard"
@@ -132,20 +205,112 @@ function CheckoutContent() {
                 <div className="w-8 h-8 border-2 border-white/10 border-t-amber-400 rounded-full animate-spin" />
               </div>
             ) : (
-              /* Payment flow */
               <>
-                {error && (
-                  <div className="flex items-center gap-2.5 bg-red-500/10 border border-red-500/20 rounded-xl px-3.5 py-2.5 mb-5">
-                    <p className="text-[11px] text-red-400">{error}</p>
+                {/* Plan summary */}
+                <div className="flex items-center justify-between px-4 py-3 rounded-2xl mb-5"
+                  style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.15)' }}>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Plan seleccionado</p>
+                    <p className="text-sm font-black text-white">{PLAN_LABELS[planId] ?? planId}</p>
+                  </div>
+                  <p className="text-2xl font-black text-white">
+                    ${price} <span className="text-xs text-white/40">USD</span>
+                  </p>
+                </div>
+
+                {/* Method tabs — only show if both methods are active */}
+                {libelulaAvailable && manualAvailable && (
+                  <div className="flex rounded-xl overflow-hidden border border-white/10 mb-5">
+                    <button
+                      onClick={() => setPayMethod('libelula')}
+                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${payMethod === 'libelula' ? 'text-black' : 'text-white/40 hover:text-white/60'}`}
+                      style={payMethod === 'libelula' ? { background: 'linear-gradient(135deg, #D97706, #FFD700)' } : { background: 'transparent' }}
+                    >
+                      QR Libélula
+                    </button>
+                    <button
+                      onClick={() => setPayMethod('manual')}
+                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${payMethod === 'manual' ? 'text-white bg-white/10' : 'text-white/40 hover:text-white/60'}`}
+                    >
+                      Comprobante
+                    </button>
                   </div>
                 )}
-                <PaymentGateway
-                  plan={PLAN_LABELS[planId] ?? planId}
-                  price={price}
-                  onSubmitPayment={handleSubmitPayment}
-                  onSuccess={handleSuccess}
-                  onCancel={() => router.push('/dashboard/planes')}
-                />
+
+                {/* Libélula flow */}
+                {payMethod === 'libelula' && (
+                  <div className="space-y-4">
+                    {libelulaError && (
+                      <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3.5 py-2.5">
+                        <AlertCircle size={13} className="text-red-400 shrink-0" />
+                        <p className="text-[11px] text-red-400">{libelulaError}</p>
+                      </div>
+                    )}
+
+                    {!libelulaData ? (
+                      <button
+                        onClick={handleLibelulaCreate}
+                        disabled={libelulaLoading}
+                        className="w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 text-black"
+                        style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)', boxShadow: '0 4px 24px rgba(255,215,0,0.25)' }}
+                      >
+                        {libelulaLoading ? (
+                          <><Loader2 size={15} className="animate-spin" /> Generando QR...</>
+                        ) : (
+                          <><QrCode size={15} /> Pagar con QR Libélula</>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/30 text-center">
+                          Escanea el QR para pagar <span style={{ color: '#FFD700' }}>${price} USD</span>
+                        </p>
+
+                        {/* QR */}
+                        <div className="flex justify-center">
+                          <div className="w-52 h-52 rounded-2xl overflow-hidden bg-white p-2">
+                            <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
+                          </div>
+                        </div>
+
+                        {/* Open in browser */}
+                        <a
+                          href={libelulaData.paymentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all"
+                        >
+                          <ExternalLink size={14} /> Abrir pasarela de pago
+                        </a>
+
+                        {/* Polling status */}
+                        <div className="flex items-center justify-center gap-2 py-2">
+                          {libelulaPolling ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin text-white/30" />
+                              <p className="text-[11px] text-white/30">Esperando confirmación de pago...</p>
+                            </>
+                          ) : null}
+                        </div>
+
+                        <p className="text-[10px] text-center text-white/20">
+                          Tu plan se activará automáticamente al confirmar el pago
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Manual QR / proof upload flow */}
+                {payMethod === 'manual' && manualAvailable && (
+                  <PaymentGateway
+                    plan={PLAN_LABELS[planId] ?? planId}
+                    price={price}
+                    onSubmitPayment={handleSubmitPayment}
+                    onSuccess={handleSuccess}
+                    onCancel={() => router.push('/dashboard/planes')}
+                  />
+                )}
               </>
             )}
           </div>
@@ -155,7 +320,9 @@ function CheckoutContent() {
         {!done && (
           <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-white/20">
             <ShieldCheck size={11} />
-            Proceso verificado manualmente por el equipo Nexor
+            {libelulaAvailable && payMethod === 'libelula'
+              ? 'Pago procesado por Libélula · Banco Mercantil Santa Cruz'
+              : 'Proceso verificado manualmente por el equipo Nexor'}
           </div>
         )}
 

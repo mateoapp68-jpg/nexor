@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+const PRICE_DEFAULTS: Record<string, number> = {
+  BASIC: 49, PRO: 99, ELITE: 199, RENEWAL: 19,
+}
+
 /** GET /api/pack-requests — lista las solicitudes del usuario autenticado */
 export async function GET() {
   try {
@@ -39,11 +43,11 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const body = await request.json()
-    const { plan, price, paymentProofUrl } = body
+    const { plan, isRenewal, paymentProofUrl } = body
 
-    if (!plan || !price || !paymentProofUrl) {
+    if (!plan || !paymentProofUrl) {
       return NextResponse.json(
-        { error: 'plan, price y paymentProofUrl son requeridos' },
+        { error: 'plan y paymentProofUrl son requeridos' },
         { status: 400 }
       )
     }
@@ -51,6 +55,16 @@ export async function POST(request: NextRequest) {
     const validPlans = ['BASIC', 'PRO', 'ELITE']
     if (!validPlans.includes(plan)) {
       return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
+    }
+
+    // Fetch real price from DB — never trust frontend
+    const priceKey = isRenewal ? 'PRICE_RENEWAL' : `PRICE_${plan}`
+    const priceSetting = await prisma.appSetting.findUnique({ where: { key: priceKey } })
+    const price = priceSetting?.value ? parseFloat(priceSetting.value) : PRICE_DEFAULTS[isRenewal ? 'RENEWAL' : plan]
+
+    // Validate renewal — user must have this plan active
+    if (isRenewal && user.plan !== plan) {
+      return NextResponse.json({ error: 'Solo puedes renovar tu plan actual.' }, { status: 400 })
     }
 
     // Solo una solicitud PENDING a la vez por usuario
@@ -71,6 +85,7 @@ export async function POST(request: NextRequest) {
         price,
         paymentProofUrl,
         status: 'PENDING',
+        notes: isRenewal ? 'RENEWAL' : null,
       },
     })
 
