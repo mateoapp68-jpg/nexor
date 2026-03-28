@@ -41,8 +41,8 @@ export async function GET(req: Request) {
         const meRes = await fetch(`${GRAPH}/me?fields=id,name,picture&access_token=${longToken}`)
         const meData = await meRes.json()
 
-        // Get pages
-        const pagesRes = await fetch(`${GRAPH}/me/accounts?access_token=${longToken}`)
+        // Get pages (include access_token and instagram account in fields)
+        const pagesRes = await fetch(`${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${longToken}`)
         const pagesData = await pagesRes.json()
         const pages = pagesData.data || []
 
@@ -74,36 +74,49 @@ export async function GET(req: Request) {
             }
         })
 
-        // Also save Instagram if linked
-        if (pages[0]) {
-            const igRes = await fetch(`${GRAPH}/${pages[0].id}?fields=instagram_business_account&access_token=${pages[0].access_token}`)
-            const igData = await igRes.json()
-            if (igData.instagram_business_account?.id) {
-                const igId = igData.instagram_business_account.id
-                const igInfoRes = await fetch(`${GRAPH}/${igId}?fields=name,username,profile_picture_url&access_token=${pages[0].access_token}`)
+        // Also save Instagram if linked — check all pages, not just pages[0]
+        for (const page of pages) {
+            try {
+                const pageToken = page.access_token || longToken
+                // Instagram account may already be in the pages response
+                let igId = page.instagram_business_account?.id
+                if (!igId) {
+                    // Fallback: fetch explicitly
+                    const igRes = await fetch(`${GRAPH}/${page.id}?fields=instagram_business_account&access_token=${pageToken}`)
+                    const igData = await igRes.json()
+                    igId = igData.instagram_business_account?.id
+                }
+                if (!igId) continue
+
+                const igInfoRes = await fetch(`${GRAPH}/${igId}?fields=name,username,profile_picture_url&access_token=${pageToken}`)
                 const igInfo = await igInfoRes.json()
 
                 await (prisma as any).socialConnection.upsert({
                     where: { userId_network: { userId, network: 'INSTAGRAM' } },
                     update: {
-                        accessToken: pages[0].access_token,
+                        accessToken: pageToken,
                         accountId: igId,
                         accountName: igInfo.name || igInfo.username || 'Instagram',
                         accountAvatar: igInfo.profile_picture_url,
-                        pageId: pages[0].id,
+                        pageId: page.id,
+                        pageName: page.name,
                         expiresAt
                     },
                     create: {
                         userId,
                         network: 'INSTAGRAM',
-                        accessToken: pages[0].access_token,
+                        accessToken: pageToken,
                         accountId: igId,
                         accountName: igInfo.name || igInfo.username || 'Instagram',
                         accountAvatar: igInfo.profile_picture_url,
-                        pageId: pages[0].id,
+                        pageId: page.id,
+                        pageName: page.name,
                         expiresAt
                     }
                 })
+                break // Save first Instagram found
+            } catch (e) {
+                console.warn('[Social OAuth] Instagram fetch failed for page', page.id, e)
             }
         }
 
