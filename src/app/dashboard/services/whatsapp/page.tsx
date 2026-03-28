@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { UploadField } from '@/components/UploadField'
+import GlobalAiKeyToggle from '@/components/GlobalAiKeyToggle'
 import {
   ArrowLeft,
   Plus,
@@ -999,10 +1000,13 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
           </div>
         )}
 
+        {/* API key de la app */}
+        <GlobalAiKeyToggle />
+
         {/* OpenAI API Key */}
         <div>
           <label className="block text-xs font-medium text-white/50 mb-1.5">
-            OpenAI API Key{' '}
+            OpenAI API Key (propia){' '}
             {creds?.hasOpenAIKey && (
               <span className="text-amber-400 ml-1">✓ configurada</span>
             )}

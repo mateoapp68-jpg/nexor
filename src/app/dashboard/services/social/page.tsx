@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Send, Calendar, History, BarChart2, Zap, Image, Video, Sparkles, Wand2, FileText, Trash2, Plus, Loader2, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react'
+import GlobalAiKeyToggle from '@/components/GlobalAiKeyToggle'
 
 const NETWORKS = [
     { id: 'FACEBOOK', label: 'Facebook', icon: '📘', color: '#1877F2', supportsText: true, supportsImage: true, supportsVideo: true, supportsStory: true },
@@ -702,6 +703,9 @@ function ConnectionsPanel({ connections, onRefresh }: { connections: any[]; onRe
 
     return (
         <div className="space-y-4">
+            {/* API key de la app */}
+            <GlobalAiKeyToggle />
+
             {/* OpenAI API Key */}
             <div className="bg-white/5 p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5">
                 <div className="flex items-center gap-2 mb-3">

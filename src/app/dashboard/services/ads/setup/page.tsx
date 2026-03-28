@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Brain, Zap, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, ArrowLeft, Settings2, Link2, Key, Sparkles } from 'lucide-react'
 import Link from 'next/link'
+import GlobalAiKeyToggle from '@/components/GlobalAiKeyToggle'
 
 const PLATFORMS = [
     { id: 'META', label: 'Meta Ads', sub: 'Facebook & Instagram', color: '#0081FB', letter: 'f', textColor: 'text-amber-400' },
@@ -241,6 +242,9 @@ function SetupPageInner() {
             {/* OpenAI Tab */}
             {tab === 'openai' && (
                 <div className="space-y-5">
+
+                    {/* API key de la app */}
+                    <GlobalAiKeyToggle />
 
                     {/* Current config */}
                     {config && (
