@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       userId: user.id,
       notes: { startsWith: `LIBELULA:${transactionId}` },
     },
-    select: { status: true, notes: true },
+    select: { status: true },
   })
 
   return NextResponse.json({ paid: packRequest?.status === 'APPROVED' })

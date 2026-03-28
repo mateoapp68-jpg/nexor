@@ -279,9 +279,16 @@ function CheckoutContent() {
                             <QrCode size={13} /> Escanear QR
                           </p>
                           <div className="flex justify-center">
-                            <div className="w-44 h-44 rounded-xl overflow-hidden bg-white p-2">
-                              <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
-                            </div>
+                            {libelulaData.qrUrl ? (
+                              <div className="w-44 h-44 rounded-xl overflow-hidden bg-white p-2">
+                                <img src={libelulaData.qrUrl} alt="QR Libélula" className="w-full h-full object-contain" />
+                              </div>
+                            ) : (
+                              <div className="w-44 h-44 rounded-xl flex flex-col items-center justify-center gap-2 border border-white/10">
+                                <QrCode size={28} className="text-white/20" />
+                                <p className="text-[10px] text-white/30 text-center px-4">Usa el botón de abajo para pagar</p>
+                              </div>
+                            )}
                           </div>
                           <p className="text-[10px] text-center text-white/25">QR boliviano · Tigo Money, BNB, etc.</p>
                         </div>

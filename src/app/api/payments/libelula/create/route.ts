@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Convert USD → BOB for Libélula (admin sets the market rate, default 6.96 official)
-  const usdToBob = rateSetting?.value ? parseFloat(rateSetting.value) : 6.96
+  const usdToBobRaw = rateSetting?.value ? parseFloat(rateSetting.value) : NaN
+  const usdToBob = isNaN(usdToBobRaw) || usdToBobRaw <= 0 ? 6.96 : usdToBobRaw
   const priceBob = Math.round(priceUsd * usdToBob * 100) / 100
 
   // Validate renewal — user must have this plan active
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
 
     if (!libelulaRes.ok || !libelulaData.id_transaccion) {
       const rawBody = JSON.stringify(libelulaData)
-      console.error(`[Libélula create] HTTP ${libelulaRes.status} | Request appkey: ${appkey} | Response: ${rawBody}`)
+      console.error(`[Libélula create] HTTP ${libelulaRes.status} | Response: ${rawBody}`)
       return NextResponse.json({
         error: `Error Libélula — respuesta del servidor: ${rawBody}`,
         debug: { httpStatus: libelulaRes.status, response: libelulaData }
