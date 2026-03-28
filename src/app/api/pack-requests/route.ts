@@ -14,7 +14,11 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const requests = await prisma.packPurchaseRequest.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        // Exclude Libélula records — those are handled automatically, not manually
+        NOT: { notes: { startsWith: 'LIBELULA:' } },
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

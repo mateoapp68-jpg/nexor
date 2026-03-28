@@ -203,7 +203,7 @@ export default function PlanesPage() {
       .then(r => r.json())
       .then(d => {
         const pending = (d.requests ?? []).find(
-          (r: { status: string }) => r.status === 'PENDING'
+          (r: { status: string }) => r.status === 'PENDING'  // solo manual, no Libélula
         )
         if (pending) setPendingPlan(pending.plan)
       })
