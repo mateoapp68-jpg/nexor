@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({
-    transactionId: libelulaData.id_transaccion,
+    transactionId: identificadorDeuda,
     paymentUrl: libelulaData.url_pasarela_pagos,
     qrUrl: libelulaData.qr_simple_url,
     cardUrl: libelulaData.url_tarjeta ?? libelulaData.url_pasarela_pagos,
