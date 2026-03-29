@@ -39,8 +39,8 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value
   const { pathname } = request.nextUrl
 
-  // Bloquear bots/scrapers en rutas API (excluir webhooks y health check)
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks/') && pathname !== '/api/health') {
+  // Bloquear bots/scrapers en rutas API (excluir webhooks, callbacks de pago y health check)
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks/') && !pathname.startsWith('/api/payments/libelula/callback') && pathname !== '/api/health') {
     if (isBotRequest(request)) {
       return new NextResponse(
         JSON.stringify({ error: 'Acceso denegado.' }),
