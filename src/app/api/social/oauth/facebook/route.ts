@@ -7,7 +7,7 @@ const GRAPH = 'https://graph.facebook.com/v21.0'
 const APP_ID = process.env.META_APP_ID!
 const APP_SECRET = process.env.META_APP_SECRET!
 const REDIRECT_URI = process.env.SOCIAL_FACEBOOK_REDIRECT_URI || process.env.META_REDIRECT_URI!
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nex180.site'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)

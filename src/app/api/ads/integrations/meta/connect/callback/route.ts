@@ -7,7 +7,7 @@ const GRAPH = 'https://graph.facebook.com/v21.0'
 const META_APP_ID = process.env.META_APP_ID!
 const META_APP_SECRET = process.env.META_APP_SECRET!
 const REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/ads/integrations/meta/connect/callback`
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://nex180.site'
 const ENCRYPTION_KEY = process.env.ADS_ENCRYPTION_KEY || ''
 
 export async function GET(req: Request) {

@@ -10,7 +10,7 @@ import { sendPlanPurchaseConfirmedEmail } from '@/lib/email'
 export async function GET(req: NextRequest) {
   const transactionId = req.nextUrl.searchParams.get('transaction_id')
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nexor-itt9.onrender.com'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nex180.site'
 
   if (!transactionId) {
     return NextResponse.redirect(`${appUrl}/dashboard/planes?payment=error`)

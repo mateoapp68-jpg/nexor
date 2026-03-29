@@ -55,7 +55,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-white font-semibold text-base mb-2">9. Contacto</h2>
-            <p>Para consultas sobre privacidad, contactanos en <span className="text-amber-400">nexor-itt9.onrender.com</span>.</p>
+            <p>Para consultas sobre privacidad, contactanos en <span className="text-amber-400">nex180.site</span>.</p>
           </section>
 
         </div>

@@ -15,7 +15,7 @@ export default function DataDeletionPage() {
           <section>
             <h2 className="text-white font-semibold text-base mb-2">Opción 1: Desde la plataforma</h2>
             <ol className="list-decimal pl-5 space-y-1">
-              <li>Inicia sesión en <span className="text-amber-400">nexor-itt9.onrender.com</span></li>
+              <li>Inicia sesión en <span className="text-amber-400">nex180.site</span></li>
               <li>Ve a <strong className="text-white">Servicios → Social → Cuentas</strong></li>
               <li>Haz clic en <strong className="text-white">Desconectar</strong> junto a tu cuenta de Facebook</li>
               <li>Para eliminar tu cuenta completa, ve a <strong className="text-white">Configuración → Eliminar cuenta</strong></li>
