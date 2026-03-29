@@ -85,6 +85,13 @@ export async function POST(req: NextRequest) {
   const [firstName, ...rest] = (user.fullName || user.username || 'Cliente').split(' ')
   const lastName = rest.join(' ') || firstName
 
+  // Expiry: 5 minutes from now — Libélula expects Bolivia local time (UTC-4)
+  const boliviaOffsetMs = -4 * 60 * 60 * 1000
+  const expiryDate = new Date(Date.now() + 5 * 60 * 1000 + boliviaOffsetMs)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  // Use UTC getters since we already offset manually
+  const fechaLimitePago = `${expiryDate.getUTCFullYear()}-${pad(expiryDate.getUTCMonth() + 1)}-${pad(expiryDate.getUTCDate())} ${pad(expiryDate.getUTCHours())}:${pad(expiryDate.getUTCMinutes())}:${pad(expiryDate.getUTCSeconds())}`
+
   const body = {
     appkey,
     descripcion,
@@ -93,6 +100,7 @@ export async function POST(req: NextRequest) {
     apellido_cliente: lastName,
     identificador_deuda: identificadorDeuda,
     callback_url: callbackUrl,
+    fecha_limite_pago: fechaLimitePago,
     lineas_detalle_deuda: [
       {
         concepto: descripcion,
