@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   webpush.setVapidDetails(
-    'mailto:admin@nexor.app',
+    'mailto:mateoapp68@gmail.com',
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY,
   )
