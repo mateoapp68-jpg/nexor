@@ -107,6 +107,8 @@ function CheckoutContent() {
           clearInterval(interval)
           setLibelulaPolling(false)
           setDone(true)
+          // Auto-redirect to dashboard after 2 seconds
+          setTimeout(() => router.push('/dashboard?payment=success'), 2000)
         }
       } catch {
         // ignore polling errors
@@ -117,7 +119,7 @@ function CheckoutContent() {
       clearInterval(interval)
       setLibelulaPolling(false)
     }
-  }, [libelulaData, done])
+  }, [libelulaData, done, router])
 
   const triggerLibelula = async (knownPrice?: number) => {
     setLibelulaLoading(true)
