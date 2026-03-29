@@ -88,12 +88,14 @@ export async function POST(req: NextRequest) {
   const [firstName, ...rest] = (user.fullName || user.username || 'Cliente').split(' ')
   const lastName = rest.join(' ') || firstName
 
-  // Expiry: 5 minutes from now — Libélula expects Bolivia local time (UTC-4)
-  const boliviaOffsetMs = -4 * 60 * 60 * 1000
-  const expiryDate = new Date(Date.now() + 5 * 60 * 1000 + boliviaOffsetMs)
+  // Expiry: 5 minutes from now
+  // Todotix API expects DD/MM/YYYY HH:mm:ss in Bolivia local time (UTC-4)
   const pad = (n: number) => String(n).padStart(2, '0')
-  // Use UTC getters since we already offset manually
-  const fechaLimitePago = `${expiryDate.getUTCFullYear()}-${pad(expiryDate.getUTCMonth() + 1)}-${pad(expiryDate.getUTCDate())} ${pad(expiryDate.getUTCHours())}:${pad(expiryDate.getUTCMinutes())}:${pad(expiryDate.getUTCSeconds())}`
+  const expiryUtcMs = Date.now() + 5 * 60 * 1000
+  const boliviaOffsetMs = -4 * 60 * 60 * 1000
+  const expiryDate = new Date(expiryUtcMs + boliviaOffsetMs)
+  const fechaLimitePago = `${pad(expiryDate.getUTCDate())}/${pad(expiryDate.getUTCMonth() + 1)}/${expiryDate.getUTCFullYear()} ${pad(expiryDate.getUTCHours())}:${pad(expiryDate.getUTCMinutes())}:${pad(expiryDate.getUTCSeconds())}`
+  console.log(`[Libélula] fecha_limite_pago: ${fechaLimitePago}`)
 
   const body = {
     appkey,
