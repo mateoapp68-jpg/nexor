@@ -88,14 +88,12 @@ export async function POST(req: NextRequest) {
   const [firstName, ...rest] = (user.fullName || user.username || 'Cliente').split(' ')
   const lastName = rest.join(' ') || firstName
 
-  // Expiry: 5 minutes from now
-  // Todotix API expects DD/MM/YYYY HH:mm:ss in Bolivia local time (UTC-4)
+  // Expiry: today's date in Bolivia (UTC-4) — Todotix API uses fecha_vencimiento: yyyy-MM-dd (date only)
   const pad = (n: number) => String(n).padStart(2, '0')
-  const expiryUtcMs = Date.now() + 5 * 60 * 1000
   const boliviaOffsetMs = -4 * 60 * 60 * 1000
-  const expiryDate = new Date(expiryUtcMs + boliviaOffsetMs)
-  const fechaLimitePago = `${pad(expiryDate.getUTCDate())}/${pad(expiryDate.getUTCMonth() + 1)}/${expiryDate.getUTCFullYear()} ${pad(expiryDate.getUTCHours())}:${pad(expiryDate.getUTCMinutes())}:${pad(expiryDate.getUTCSeconds())}`
-  console.log(`[Libélula] fecha_limite_pago: ${fechaLimitePago}`)
+  const nowBolivia = new Date(Date.now() + boliviaOffsetMs)
+  const fechaVencimiento = `${nowBolivia.getUTCFullYear()}-${pad(nowBolivia.getUTCMonth() + 1)}-${pad(nowBolivia.getUTCDate())}`
+  console.log(`[Libélula] fecha_vencimiento: ${fechaVencimiento}`)
 
   const body = {
     appkey,
@@ -105,7 +103,7 @@ export async function POST(req: NextRequest) {
     apellido_cliente: lastName,
     identificador_deuda: identificadorDeuda,
     callback_url: callbackUrl,
-    fecha_limite_pago: fechaLimitePago,
+    fecha_vencimiento: fechaVencimiento,
     lineas_detalle_deuda: [
       {
         concepto: descripcion,
