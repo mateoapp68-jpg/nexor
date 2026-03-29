@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Public endpoint — returns only non-sensitive settings users need
-const PUBLIC_KEYS = ['PAYMENT_QR_URL', 'PRICE_BASIC', 'PRICE_PRO', 'PRICE_ELITE', 'PRICE_RENEWAL', 'STORE_PAYMENT_CRYPTO', 'STORE_PAYMENT_MANUAL']
+const PUBLIC_KEYS = ['PAYMENT_QR_URL', 'PRICE_BASIC', 'PRICE_PRO', 'PRICE_ELITE', 'PRICE_RENEWAL', 'STORE_PAYMENT_CRYPTO', 'STORE_PAYMENT_MANUAL', 'USD_TO_BOB_RATE']
 
 export async function GET() {
   try {

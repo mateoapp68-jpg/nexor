@@ -186,6 +186,8 @@ export default function PlanesPage() {
   const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null)
   const [pendingPlan, setPendingPlan] = useState<string | null>(null)
   const [prices, setPrices] = useState<Record<string, number>>(PRICE_DEFAULTS)
+  const [usdToBob, setUsdToBob] = useState<number>(0)
+  const [libelulaAvailable, setLibelulaAvailable] = useState(false)
   const countdown = useCountdown(planExpiresAt)
 
   useEffect(() => {
@@ -220,6 +222,9 @@ export default function PlanesPage() {
           PRICE_ELITE:   parseFloat(map.PRICE_ELITE)   || PRICE_DEFAULTS.PRICE_ELITE,
           PRICE_RENEWAL: parseFloat(map.PRICE_RENEWAL) || PRICE_DEFAULTS.PRICE_RENEWAL,
         })
+        const rate = parseFloat(map.USD_TO_BOB_RATE)
+        if (rate > 0) setUsdToBob(rate)
+        setLibelulaAvailable(map.LIBELULA_AVAILABLE === 'true')
       })
       .catch(() => {})
   }, [])
@@ -360,6 +365,11 @@ export default function PlanesPage() {
                       </span>
                       <span className="text-sm text-white/30 mb-1.5">USD</span>
                     </div>
+                    {usdToBob > 0 && (
+                      <p className="text-sm font-black mt-0.5" style={{ color: '#FFD700' }}>
+                        Bs. {Math.round(price * usdToBob * 100) / 100}
+                      </p>
+                    )}
                     <p className="text-[10px] text-white/20 mt-0.5">30 días de acceso · renovable</p>
                   </div>
 
@@ -420,12 +430,12 @@ export default function PlanesPage() {
                   {/* CTA */}
                   {isActive ? (
                     <button
-                      onClick={() => router.push(`/dashboard/planes/checkout?plan=${pack.planId}&renewal=true`)}
+                      onClick={() => router.push(`/dashboard/planes/checkout?plan=${pack.planId}&renewal=true${libelulaAvailable ? '&autostart=1' : ''}`)}
                       disabled={!!pendingPlan}
                       className="w-full py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                       style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ade80' }}
                     >
-                      <RefreshCw size={13} /> Renovar — ${renewal}
+                      <RefreshCw size={13} /> Renovar — ${renewal}{usdToBob > 0 ? ` · Bs. ${Math.round(renewal * usdToBob * 100) / 100}` : ''}
                     </button>
                   ) : isLower ? (
                     <button disabled
@@ -441,7 +451,7 @@ export default function PlanesPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => router.push(`/dashboard/planes/checkout?plan=${pack.planId}`)}
+                      onClick={() => router.push(`/dashboard/planes/checkout?plan=${pack.planId}${libelulaAvailable ? '&autostart=1' : ''}`)}
                       disabled={!!pendingPlan}
                       className="w-full py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
                       style={pack.featured ? {

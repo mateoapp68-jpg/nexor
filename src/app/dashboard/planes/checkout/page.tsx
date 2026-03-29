@@ -25,6 +25,7 @@ function CheckoutContent() {
 
   const planId = (searchParams.get('plan') ?? '').toUpperCase()
   const isRenewal = searchParams.get('renewal') === 'true'
+  const autoStart = searchParams.get('autostart') === '1'
 
   const [price, setPrice] = useState<number | null>(null)
   const [done, setDone] = useState(false)
@@ -63,12 +64,17 @@ function CheckoutContent() {
         setLibelulaAvailable(hasLibelula)
         setManualAvailable(hasManual)
         if (!hasLibelula) setPayMethod('manual')
+        // Auto-start Libélula if coming from planes page button
+        if (hasLibelula && autoStart) {
+          const usdPrice = parseFloat(map[isRenewal ? 'PRICE_RENEWAL' : `PRICE_${planId}`]) || (isRenewal ? PRICE_DEFAULTS.RENEWAL : PRICE_DEFAULTS[planId])
+          if (usdPrice > 0) triggerLibelula(usdPrice)
+        }
       })
       .catch(() => {
         setPrice(isRenewal ? PRICE_DEFAULTS.RENEWAL : PRICE_DEFAULTS[planId])
         setPayMethod('manual')
       })
-  }, [planId, isRenewal, router])
+  }, [planId, isRenewal, router, autoStart])
 
   // Poll for payment confirmation
   useEffect(() => {
@@ -95,8 +101,7 @@ function CheckoutContent() {
     }
   }, [libelulaData, done])
 
-  const handleLibelulaCreate = async (openCard = false) => {
-    if (!price) return
+  const triggerLibelula = async (knownPrice?: number) => {
     setLibelulaLoading(true)
     setLibelulaError('')
     try {
@@ -108,15 +113,20 @@ function CheckoutContent() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al crear el pago')
       if (data.price && data.price > 0) setPrice(data.price)
+      else if (knownPrice) setPrice(knownPrice)
       setLibelulaData(data)
-      if (openCard && (data.cardUrl || data.paymentUrl)) {
-        window.open(data.cardUrl || data.paymentUrl, '_blank')
-      }
+      const url = data.cardUrl || data.paymentUrl
+      if (url) window.open(url, '_blank')
     } catch (err: unknown) {
       setLibelulaError(err instanceof Error ? err.message : 'Error al conectar con la pasarela de pago')
     } finally {
       setLibelulaLoading(false)
     }
+  }
+
+  const handleLibelulaCreate = async (openCard = false) => {
+    if (!price) return
+    await triggerLibelula()
   }
 
   const handleSubmitPayment = async (proofUrl: string): Promise<'approved' | 'pending_verification'> => {
