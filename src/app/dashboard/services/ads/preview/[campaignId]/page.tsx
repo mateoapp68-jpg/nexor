@@ -44,13 +44,15 @@ export default function PreviewPage() {
             const camp = campData.campaigns?.find((c: any) => c.id === campaignId)
             if (!camp) { router.push('/dashboard/services/ads'); return }
             setCampaign(camp)
-            setCreatives(copyData.creatives || [])
+            const sortedCreatives = (copyData.creatives || []).sort((a: any, b: any) => a.slotIndex - b.slotIndex)
+            setCreatives(sortedCreatives)
+            if (sortedCreatives.length > 0) setActiveSlot(sortedCreatives[0].slotIndex)
         } catch (e) { console.error(e) }
         finally { setLoading(false) }
     }
 
     async function saveCreative(i: number) {
-        const creative = creatives[i]
+        const creative = creatives.find((c: any) => c.slotIndex === i) ?? creatives[i]
         if (!creative?.id) return
         setSaving(true)
         try {
@@ -90,7 +92,7 @@ export default function PreviewPage() {
     if (!campaign) return null
 
     const statusInfo = STATUS_INFO[campaign.status] || STATUS_INFO['DRAFT']
-    const currentCreative = creatives[activeSlot]
+    const currentCreative = creatives.find((c: any) => c.slotIndex === activeSlot) ?? creatives[0]
     const isPublished = campaign.status === 'PUBLISHED'
 
     return (
@@ -170,16 +172,16 @@ export default function PreviewPage() {
                             <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Vista previa del anuncio</p>
                             <div className="flex items-center gap-1">
                                 <button
-                                    onClick={() => setActiveSlot(Math.max(0, activeSlot - 1))}
-                                    disabled={activeSlot === 0}
+                                    onClick={() => { const idx = creatives.findIndex((c: any) => c.slotIndex === activeSlot); if (idx > 0) setActiveSlot(creatives[idx - 1].slotIndex) }}
+                                    disabled={creatives.findIndex((c: any) => c.slotIndex === activeSlot) === 0}
                                     className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center disabled:opacity-30 hover:bg-white/10"
                                 >
                                     <ChevronLeft size={14} />
                                 </button>
-                                <span className="text-xs text-white/30 px-2">{activeSlot + 1}/{creatives.length}</span>
+                                <span className="text-xs text-white/30 px-2">{creatives.findIndex((c: any) => c.slotIndex === activeSlot) + 1}/{creatives.length}</span>
                                 <button
-                                    onClick={() => setActiveSlot(Math.min(creatives.length - 1, activeSlot + 1))}
-                                    disabled={activeSlot === creatives.length - 1}
+                                    onClick={() => { const idx = creatives.findIndex((c: any) => c.slotIndex === activeSlot); if (idx < creatives.length - 1) setActiveSlot(creatives[idx + 1].slotIndex) }}
+                                    disabled={creatives.findIndex((c: any) => c.slotIndex === activeSlot) === creatives.length - 1}
                                     className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center disabled:opacity-30 hover:bg-white/10"
                                 >
                                     <ChevronRight size={14} />
@@ -252,9 +254,9 @@ export default function PreviewPage() {
                         <div className="flex gap-2 mt-3 flex-wrap">
                             {creatives.map((c, i) => (
                                 <button
-                                    key={i}
-                                    onClick={() => setActiveSlot(i)}
-                                    className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all ${i === activeSlot ? 'border-amber-500' : 'border-white/10 hover:border-white/30'}`}
+                                    key={c.id || i}
+                                    onClick={() => setActiveSlot(c.slotIndex)}
+                                    className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all ${c.slotIndex === activeSlot ? 'border-amber-500' : 'border-white/10 hover:border-white/30'}`}
                                 >
                                     {c.mediaUrl
                                         ? <img src={c.mediaUrl} alt="" className="w-full h-full object-cover" />
@@ -270,38 +272,38 @@ export default function PreviewPage() {
                         <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Editar copies ({creatives.length} anuncios)</p>
                         {creatives.map((creative, i) => (
                             <div
-                                key={i}
-                                onClick={() => setActiveSlot(i)}
-                                className={`bg-dark-900/40 border rounded-2xl p-4 cursor-pointer transition-all ${i === activeSlot ? 'border-amber-500/40 bg-amber-500/5' : 'border-white/5 hover:border-white/15'}`}
+                                key={creative.id || i}
+                                onClick={() => setActiveSlot(creative.slotIndex)}
+                                className={`bg-dark-900/40 border rounded-2xl p-4 cursor-pointer transition-all ${creative.slotIndex === activeSlot ? 'border-amber-500/40 bg-amber-500/5' : 'border-white/5 hover:border-white/15'}`}
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-[10px] font-black uppercase text-white/30">Anuncio #{i + 1}</span>
                                     <button
-                                        onClick={e => { e.stopPropagation(); setEditingSlot(editingSlot === i ? null : i) }}
+                                        onClick={e => { e.stopPropagation(); setEditingSlot(editingSlot === creative.slotIndex ? null : creative.slotIndex) }}
                                         className="text-[10px] font-bold text-amber-400 hover:underline flex items-center gap-1"
                                     >
                                         <Edit3 size={10} /> Editar
                                     </button>
                                 </div>
 
-                                {editingSlot === i ? (
+                                {editingSlot === creative.slotIndex ? (
                                     <div className="space-y-2" onClick={e => e.stopPropagation()}>
                                         <textarea
                                             value={creative.primaryText}
-                                            onChange={e => setCreatives(prev => prev.map((c, j) => j === i ? { ...c, primaryText: e.target.value } : c))}
+                                            onChange={e => setCreatives(prev => prev.map((c) => c.slotIndex === creative.slotIndex ? { ...c, primaryText: e.target.value } : c))}
                                             rows={4}
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 resize-none focus:outline-none focus:border-amber-500/50 leading-relaxed"
                                         />
                                         <div className="grid grid-cols-2 gap-2">
                                             <input
                                                 value={creative.headline}
-                                                onChange={e => setCreatives(prev => prev.map((c, j) => j === i ? { ...c, headline: e.target.value } : c))}
+                                                onChange={e => setCreatives(prev => prev.map((c) => c.slotIndex === creative.slotIndex ? { ...c, headline: e.target.value } : c))}
                                                 placeholder="Titular"
                                                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50 placeholder:text-white/20"
                                             />
                                             <input
                                                 value={creative.description || ''}
-                                                onChange={e => setCreatives(prev => prev.map((c, j) => j === i ? { ...c, description: e.target.value } : c))}
+                                                onChange={e => setCreatives(prev => prev.map((c) => c.slotIndex === creative.slotIndex ? { ...c, description: e.target.value } : c))}
                                                 placeholder="Descripción"
                                                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50 placeholder:text-white/20"
                                             />
@@ -309,7 +311,7 @@ export default function PreviewPage() {
                                         <div className="flex gap-2">
                                             <button onClick={() => setEditingSlot(null)} className="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold hover:bg-white/10">Cancelar</button>
                                             <button
-                                                onClick={() => saveCreative(i)}
+                                                onClick={() => saveCreative(creative.slotIndex)}
                                                 disabled={saving}
                                                 className="flex-1 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-500 disabled:opacity-50"
                                             >

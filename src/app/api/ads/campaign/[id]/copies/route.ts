@@ -104,10 +104,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             }
         }))
 
-        // Remove stale creatives at slotIndices no longer in the new copies list
+        // Remove stale creatives only if they have NO media (no image/video uploaded or generated)
+        // Never delete a creative that has mediaUrl — it would destroy uploaded/generated images
         const newSlotIndices = new Set(copies.map((c: any) => c.slotIndex))
         const staleIds = existing
-            .filter((c: any) => !newSlotIndices.has(c.slotIndex))
+            .filter((c: any) => !newSlotIndices.has(c.slotIndex) && !c.mediaUrl)
             .map((c: any) => c.id)
         if (staleIds.length > 0) {
             await (prisma as any).adCreative.deleteMany({ where: { id: { in: staleIds } } })

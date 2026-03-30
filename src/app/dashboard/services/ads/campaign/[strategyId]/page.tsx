@@ -321,7 +321,18 @@ function CampaignPageInner() {
             })
             const data = await res.json()
             if (!res.ok) return setError(data.error || 'Error al generar copies')
-            setCreatives(data.creatives)
+            // Preserve mediaUrl/mediaType from current state — DB may not have the latest generated image yet
+            setCreatives(prev => {
+                const prevBySlot = new Map(prev.map((c: any) => [c.slotIndex, c]))
+                return data.creatives.map((c: any) => {
+                    const existing = prevBySlot.get(c.slotIndex)
+                    return {
+                        ...c,
+                        mediaUrl: existing?.mediaUrl || c.mediaUrl || null,
+                        mediaType: existing?.mediaType || c.mediaType || null,
+                    }
+                })
+            })
             setCopiesGenerated(true)
             setTimeout(() => copiesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
         } catch { setError('Error de conexión') }
