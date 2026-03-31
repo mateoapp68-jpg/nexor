@@ -54,6 +54,15 @@ const services = [
     color: '#34D399',
     glow: 'rgba(52,211,153,0.12)',
   },
+  {
+    href: '/dashboard/crm',
+    icon: 'fa-solid fa-paper-plane',
+    title: 'CRM Broadcast',
+    sub: 'WhatsApp · Envíos masivos',
+    description: 'Envía mensajes masivos por WhatsApp con mensajes únicos generados por IA para cada contacto.',
+    color: '#22D3EE',
+    glow: 'rgba(34,211,238,0.12)',
+  },
 ]
 
 export default function DashboardPage() {

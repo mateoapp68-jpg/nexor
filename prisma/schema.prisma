@@ -155,6 +155,7 @@ model User {
   deviceVerifyCodes    DeviceVerifyCode[]
   adminOtpCodes        AdminOtpCode[]
   aiUsageLogs          AiUsageLog[]
+  broadcastCampaigns   BroadcastCampaign[]
 
   @@map("users")
 }
@@ -191,10 +192,11 @@ model Bot {
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
 
-  secret           BotSecret?
-  user             User           @relation(fields: [userId], references: [id])
-  conversations    Conversation[]
-  assignedProducts BotProduct[]
+  secret              BotSecret?
+  user                User                @relation(fields: [userId], references: [id])
+  conversations       Conversation[]
+  assignedProducts    BotProduct[]
+  broadcastCampaigns  BroadcastCampaign[]
 
   @@index([userId])
   @@map("bots")
@@ -794,6 +796,98 @@ model DeviceVerifyCode {
 
   @@index([userId, deviceId])
   @@map("device_verify_codes")
+}
+
+// ─── CRM BROADCAST ───────────────────────────────────────────────────────────
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  PAUSED
+  FAILED
+}
+
+enum BroadcastLogStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model BroadcastCampaign {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @map("user_id") @db.Uuid
+  botId        String          @map("bot_id") @db.Uuid
+  name         String
+  prompt       String          @db.Text
+  status       BroadcastStatus @default(DRAFT)
+  delayValue   Int             @default(30) @map("delay_value")
+  delayUnit    String          @default("seconds") @map("delay_unit")
+  scheduledAt  DateTime?       @map("scheduled_at")
+  startedAt    DateTime?       @map("started_at")
+  completedAt  DateTime?       @map("completed_at")
+  imageIndex   Int             @default(0) @map("image_index")
+  totalContacts Int            @default(0) @map("total_contacts")
+  sentCount    Int             @default(0) @map("sent_count")
+  failedCount  Int             @default(0) @map("failed_count")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot      Bot                @relation(fields: [botId], references: [id], onDelete: Cascade)
+  images   BroadcastImage[]
+  contacts BroadcastContact[]
+  logs     BroadcastLog[]
+
+  @@index([userId, status])
+  @@map("broadcast_campaigns")
+}
+
+model BroadcastImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  campaignId String   @map("campaign_id") @db.Uuid
+  url        String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  campaign BroadcastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("broadcast_images")
+}
+
+model BroadcastContact {
+  id         String             @id @default(uuid()) @db.Uuid
+  campaignId String             @map("campaign_id") @db.Uuid
+  name       String?
+  phone      String
+  status     BroadcastLogStatus @default(PENDING)
+  sentAt     DateTime?          @map("sent_at")
+  error      String?
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  campaign BroadcastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+  @@map("broadcast_contacts")
+}
+
+model BroadcastLog {
+  id         String             @id @default(uuid()) @db.Uuid
+  campaignId String             @map("campaign_id") @db.Uuid
+  phone      String
+  name       String?
+  message    String             @db.Text
+  imageUrl   String?            @map("image_url")
+  status     BroadcastLogStatus @default(SENT)
+  error      String?
+  sentAt     DateTime           @default(now()) @map("sent_at")
+
+  campaign BroadcastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("broadcast_logs")
 }
 
 // ─── ADMIN ────────────────────────────────────────────────────────────────────

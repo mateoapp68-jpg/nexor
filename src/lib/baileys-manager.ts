@@ -547,3 +547,8 @@ if (!global.__follow_up_worker_started) {
         processFollowUps().catch(() => { })
     }, 60 * 1000)
 }
+
+// Start broadcast scheduler alongside baileys
+import('@/lib/broadcast-worker').then(({ startBroadcastScheduler }) => {
+    startBroadcastScheduler()
+}).catch(() => {})

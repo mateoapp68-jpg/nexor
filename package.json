@@ -27,7 +27,8 @@
     "react-simple-maps": "^3.0.0",
     "recharts": "^3.8.0",
     "web-push": "^3.6.7",
-    "world-atlas": "^2.0.2"
+    "world-atlas": "^2.0.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
