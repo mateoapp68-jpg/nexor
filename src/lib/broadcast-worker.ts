@@ -141,9 +141,14 @@ export async function executeBroadcast(campaignId: string) {
                 continue
             }
 
-            // Send image first if available
+            // Send media first if available (image or video)
             if (imageUrl) {
-                await BaileysManager.sendImage(campaign.botId, contact.phone, imageUrl).catch(() => {})
+                const mediaType = images[imageIndex % images.length]?.type || 'IMAGE'
+                if (mediaType === 'VIDEO') {
+                    await BaileysManager.sendVideo(campaign.botId, contact.phone, imageUrl).catch(() => {})
+                } else {
+                    await BaileysManager.sendImage(campaign.botId, contact.phone, imageUrl).catch(() => {})
+                }
                 await new Promise(r => setTimeout(r, 1500))
             }
 

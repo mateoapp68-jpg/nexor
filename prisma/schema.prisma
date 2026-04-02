@@ -849,6 +849,7 @@ model BroadcastImage {
   id         String   @id @default(uuid()) @db.Uuid
   campaignId String   @map("campaign_id") @db.Uuid
   url        String
+  type       String   @default("IMAGE") // IMAGE | VIDEO
   order      Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
 

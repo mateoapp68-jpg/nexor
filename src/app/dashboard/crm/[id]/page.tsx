@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
     ArrowLeft, Play, Pause, Users, CheckCircle2, XCircle,
     Clock, Loader2, AlertCircle, MessageSquare, RefreshCw,
-    Image as ImageIcon, Calendar, Bot, Trash2
+    Image as ImageIcon, Calendar, Bot, Trash2, Film
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -246,21 +246,31 @@ export default function CrmCampaignDetailPage() {
                         </div>
                     </div>
 
-                    {/* Images */}
+                    {/* Media files */}
                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
                         <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
-                            <ImageIcon size={12} /> Imágenes rotativas ({campaign.images?.length}/5)
+                            <ImageIcon size={12} /> Archivos multimedia ({campaign.images?.length})
                         </p>
                         {campaign.images?.length === 0 ? (
-                            <p className="text-xs text-white/30">Sin imágenes</p>
+                            <p className="text-xs text-white/30">Sin archivos</p>
                         ) : (
                             <div className="grid grid-cols-3 gap-2">
                                 {campaign.images?.map((img: any, i: number) => (
                                     <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                                        {img.type === 'VIDEO' ? (
+                                            <div className="w-full h-full bg-purple-500/10 flex flex-col items-center justify-center">
+                                                <Film size={24} className="text-purple-400" />
+                                                <span className="text-[9px] text-purple-300 mt-1">Video</span>
+                                            </div>
+                                        ) : (
+                                            <img src={img.url} alt="" className="w-full h-full object-cover" />
+                                        )}
                                         <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
                                             {i + 1}
                                         </span>
+                                        {img.type === 'VIDEO' && (
+                                            <span className="absolute top-1 right-1 bg-purple-500/80 text-white text-[8px] font-bold px-1 rounded">VID</span>
+                                        )}
                                     </div>
                                 ))}
                             </div>

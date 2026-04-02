@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft, Upload, X, Loader2, AlertCircle, CheckCircle2,
-    Bot, Clock, Calendar, Users, Sparkles, Image as ImageIcon
+    Bot, Clock, Calendar, Users, Sparkles, Image as ImageIcon, Film
 } from 'lucide-react'
 
 export default function NewCrmCampaignPage() {
@@ -23,7 +23,7 @@ export default function NewCrmCampaignPage() {
         delayUnit: 'seconds',
         scheduledAt: '',
     })
-    const [images, setImages] = useState<{ file: File; preview: string }[]>([])
+    const [mediaFiles, setMediaFiles] = useState<{ file: File; preview: string; type: 'IMAGE' | 'VIDEO' }[]>([])
     const [excelFile, setExcelFile] = useState<File | null>(null)
     const [contactsPreview, setContactsPreview] = useState<{ imported: number; errors: number; contacts: { name: string | null; phone: string }[] } | null>(null)
     const [parsingExcel, setParsingExcel] = useState(false)
@@ -54,20 +54,24 @@ export default function NewCrmCampaignPage() {
         setBotStatuses(statuses)
     }
 
-    function handleImageSelect(files: FileList | null) {
-        if (!files) return
-        const remaining = 5 - images.length
-        const selected = Array.from(files).slice(0, remaining)
-        const newImages = selected.map(file => ({
-            file,
-            preview: URL.createObjectURL(file),
-        }))
-        setImages(prev => [...prev, ...newImages])
+    function isVideoFile(file: File): boolean {
+        return file.type.startsWith('video/')
     }
 
-    function removeImage(index: number) {
-        setImages(prev => {
-            URL.revokeObjectURL(prev[index].preview)
+    function handleMediaSelect(files: FileList | null) {
+        if (!files) return
+        const selected = Array.from(files)
+        const newMedia = selected.map(file => ({
+            file,
+            preview: isVideoFile(file) ? '' : URL.createObjectURL(file),
+            type: (isVideoFile(file) ? 'VIDEO' : 'IMAGE') as 'IMAGE' | 'VIDEO',
+        }))
+        setMediaFiles(prev => [...prev, ...newMedia])
+    }
+
+    function removeMedia(index: number) {
+        setMediaFiles(prev => {
+            if (prev[index].preview) URL.revokeObjectURL(prev[index].preview)
             return prev.filter((_, i) => i !== index)
         })
     }
@@ -120,7 +124,7 @@ export default function NewCrmCampaignPage() {
         setError(null)
 
         if (!form.botId) { setError('Selecciona un bot de WhatsApp'); return }
-        if (images.length === 0) { setError('Agrega al menos 1 imagen'); return }
+        if (mediaFiles.length === 0) { setError('Agrega al menos 1 archivo (imagen o video)'); return }
         if (!excelFile) { setError('Carga el archivo Excel con contactos'); return }
 
         setLoading(true)
@@ -136,24 +140,24 @@ export default function NewCrmCampaignPage() {
             const campaignId = data.campaign.id
             setCreatedId(campaignId)
 
-            // 2. Upload images
+            // 2. Upload media files
             setUploadingImg(true)
-            const failedImgs: string[] = []
-            for (const img of images) {
+            const failedFiles: string[] = []
+            for (const media of mediaFiles) {
                 const fd = new FormData()
-                fd.append('file', img.file)
-                const imgRes = await fetch(`/api/crm/campaigns/${campaignId}/images`, {
+                fd.append('file', media.file)
+                const mediaRes = await fetch(`/api/crm/campaigns/${campaignId}/images`, {
                     method: 'POST',
                     body: fd,
                 })
-                if (!imgRes.ok) {
-                    const imgData = await imgRes.json()
-                    failedImgs.push(imgData.error || img.file.name)
+                if (!mediaRes.ok) {
+                    const mediaData = await mediaRes.json()
+                    failedFiles.push(mediaData.error || media.file.name)
                 }
             }
             setUploadingImg(false)
-            if (failedImgs.length > 0) {
-                setError(`Error subiendo imágenes: ${failedImgs.join(', ')}`)
+            if (failedFiles.length > 0) {
+                setError(`Error subiendo archivos: ${failedFiles.join(', ')}`)
                 return
             }
 
@@ -173,6 +177,9 @@ export default function NewCrmCampaignPage() {
         } catch { setError('Error de conexión') }
         finally { setLoading(false); setUploadingImg(false) }
     }
+
+    const imageCount = mediaFiles.filter(m => m.type === 'IMAGE').length
+    const videoCount = mediaFiles.filter(m => m.type === 'VIDEO').length
 
     return (
         <div className="px-4 md:px-6 pt-6 max-w-2xl mx-auto pb-24 text-white">
@@ -262,40 +269,55 @@ export default function NewCrmCampaignPage() {
                     />
                 </div>
 
-                {/* Imágenes */}
+                {/* Archivos multimedia */}
                 <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
                     <label className="block text-xs font-black uppercase tracking-widest text-white/40 mb-1 flex items-center gap-2">
-                        <ImageIcon size={12} /> Imágenes ({images.length}/5)
+                        <ImageIcon size={12} /> Archivos multimedia ({mediaFiles.length})
                     </label>
-                    <p className="text-[11px] text-white/25 mb-3">Se rotarán automáticamente: contacto 1→img1, contacto 2→img2, etc.</p>
+                    <p className="text-[11px] text-white/25 mb-1">Subí imágenes y/o videos — se rotarán automáticamente entre contactos.</p>
+                    <p className="text-[11px] text-white/25 mb-3">
+                        {imageCount > 0 && <span className="text-amber-400/70">{imageCount} imagen{imageCount !== 1 ? 'es' : ''}</span>}
+                        {imageCount > 0 && videoCount > 0 && <span> · </span>}
+                        {videoCount > 0 && <span className="text-purple-400/70">{videoCount} video{videoCount !== 1 ? 's' : ''}</span>}
+                        {mediaFiles.length === 0 && <span className="text-white/20">Sin archivos aún</span>}
+                    </p>
 
                     <div className="flex gap-2 flex-wrap">
-                        {images.map((img, i) => (
+                        {mediaFiles.map((media, i) => (
                             <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
-                                <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                                {media.type === 'VIDEO' ? (
+                                    <div className="w-full h-full bg-purple-500/10 flex flex-col items-center justify-center">
+                                        <Film size={20} className="text-purple-400" />
+                                        <span className="text-[8px] text-purple-300 mt-1 truncate max-w-[70px] px-1">{media.file.name}</span>
+                                    </div>
+                                ) : (
+                                    <img src={media.preview} alt="" className="w-full h-full object-cover" />
+                                )}
                                 <button
                                     type="button"
-                                    onClick={() => removeImage(i)}
+                                    onClick={() => removeMedia(i)}
                                     className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
                                 >
                                     <X size={16} className="text-red-400" />
                                 </button>
                                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-black px-1 rounded">{i + 1}</span>
+                                {media.type === 'VIDEO' && (
+                                    <span className="absolute top-1 right-1 bg-purple-500/80 text-white text-[8px] font-bold px-1 rounded">VID</span>
+                                )}
                             </div>
                         ))}
 
-                        {images.length < 5 && (
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-20 h-20 rounded-xl border-2 border-dashed border-white/15 hover:border-amber-500/40 flex flex-col items-center justify-center gap-1 text-white/30 hover:text-amber-400 transition-all"
-                            >
-                                <Upload size={16} />
-                                <span className="text-[9px] font-bold">Agregar</span>
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-20 h-20 rounded-xl border-2 border-dashed border-white/15 hover:border-amber-500/40 flex flex-col items-center justify-center gap-1 text-white/30 hover:text-amber-400 transition-all"
+                        >
+                            <Upload size={16} />
+                            <span className="text-[9px] font-bold">Agregar</span>
+                        </button>
                     </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleImageSelect(e.target.files)} />
+                    <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => handleMediaSelect(e.target.files)} />
+                    <p className="text-[10px] text-white/20 mt-2">Imágenes: JPG, PNG, WEBP, GIF (máx 5 MB) · Videos: MP4, MOV, WEBM (máx 64 MB)</p>
                 </div>
 
                 {/* Delay */}
@@ -412,7 +434,7 @@ export default function NewCrmCampaignPage() {
                     {loading ? (
                         <>
                             <Loader2 size={16} className="animate-spin" />
-                            {uploadingImg ? 'Subiendo imágenes...' : 'Creando campaña...'}
+                            {uploadingImg ? 'Subiendo archivos...' : 'Creando campaña...'}
                         </>
                     ) : (
                         'Crear campaña'
