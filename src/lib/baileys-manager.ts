@@ -469,10 +469,23 @@ export const BaileysManager = {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
         try {
-            // Full sync of all collections to get label associations
+            const keys = (conn.sock as any).authState?.keys
+            if (keys) {
+                // Reset app state version to 0 for regular collections
+                // This forces WhatsApp to send a FULL snapshot including all label associations
+                const collections = ['regular', 'regular_low', 'regular_high']
+                for (const name of collections) {
+                    try {
+                        await keys.set({ 'app-state-sync-version': { [name]: null } })
+                    } catch { /* ignore */ }
+                }
+                console.log(`[BAILEYS] Reset app state versions for label resync botId=${botId}`)
+            }
+
+            // Now resync — since version is 0, it will request full snapshot
             await (conn.sock as any).resyncAppState(
-                ['critical_block', 'critical_unblock_low', 'regular_high', 'regular_low', 'regular'],
-                false
+                ['regular', 'regular_low', 'regular_high'],
+                true  // isInitialSync = true to process all data
             )
             console.log(`[BAILEYS] Full label resync for botId=${botId}: ${conn.labels.size} etiquetas, ${conn.labelChats.length} asociaciones`)
             return true
@@ -614,14 +627,10 @@ export const BaileysManager = {
                     const phone = sock.user?.id?.split(':')[0] ?? ''
                     conn.phone = phone
                     await prisma.bot.update({ where: { id: botId }, data: { baileysPhone: phone } }).catch(() => { })
-                    // Force label sync after connection — full sync all collections
+                    // Force label sync after connection
                     setTimeout(async () => {
                         try {
-                            await (sock as any).resyncAppState(
-                                ['critical_block', 'critical_unblock_low', 'regular_high', 'regular_low', 'regular'],
-                                false
-                            )
-                            console.log(`[BAILEYS] Label full resync for botId=${botId}: ${conn.labels.size} etiquetas, ${conn.labelChats.length} asociaciones`)
+                            await BaileysManager.resyncLabels(botId)
                         } catch (err) {
                             console.log(`[BAILEYS] Label resync skipped for botId=${botId} (may not be Business account)`)
                         }
