@@ -543,13 +543,22 @@ export const BaileysManager = {
             .filter(a => a.labelId === labelId)
             .map(a => a.chatId)
 
-        console.log(`[BAILEYS] getLabelContacts label=${labelId}: ${chatIds.length} chatIds`)
+        console.log(`[BAILEYS] getLabelContacts label=${labelId}: ${chatIds.length} chatIds`, chatIds.slice(0, 3))
 
         const phones: string[] = []
+        const unresolved: string[] = []
         for (const chatId of chatIds) {
             const phone = await this.resolveContactPhone(botId, chatId)
-            if (phone) phones.push(phone)
+            if (phone) {
+                phones.push(phone)
+            } else {
+                unresolved.push(chatId)
+            }
         }
+        if (unresolved.length > 0) {
+            console.log(`[BAILEYS] Could not resolve ${unresolved.length} LIDs:`, unresolved.slice(0, 3))
+        }
+        console.log(`[BAILEYS] Resolved ${phones.length}/${chatIds.length} contacts for label=${labelId}`)
         return phones
     },
 
@@ -557,7 +566,15 @@ export const BaileysManager = {
         const conn = connections.get(botId)
         if (!conn?.sock) return null
 
+        // Normal JID format: "591XXXXXXXX@s.whatsapp.net"
+        if (chatId.endsWith('@s.whatsapp.net')) {
+            const phone = chatId.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+            return phone ? `+${phone}` : null
+        }
+
+        // LID format: needs resolution
         if (chatId.endsWith('@lid')) {
+            // Method 1: Use Baileys LID mapping store
             try {
                 const pn = await (conn.sock as any).signalRepository?.lidMapping?.getPNForLID(chatId)
                 if (pn) {
@@ -565,13 +582,37 @@ export const BaileysManager = {
                     if (num) return `+${num}`
                 }
             } catch { /* silent */ }
-            // Fallback: strip @lid and try as phone
-            const raw = chatId.replace('@lid', '').replace(/\D/g, '')
-            return raw.length >= 8 ? `+${raw}` : null
-        } else {
-            const phone = chatId.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-            return phone ? `+${phone}` : null
+
+            // Method 2: Use USyncQuery to resolve LID to phone via WhatsApp server
+            try {
+                const { USyncQuery, USyncUser } = await import('@whiskeysockets/baileys/lib/WAUSync/index.js')
+                const query = new USyncQuery().withContactProtocol()
+                const lidClean = chatId.replace('@lid', '')
+                query.withUser(new USyncUser().withId(`${lidClean}@s.whatsapp.net`))
+                const results = await (conn.sock as any).executeUSyncQuery(query)
+                if (results?.list?.[0]?.id) {
+                    const num = results.list[0].id.replace('@s.whatsapp.net', '').split(':')[0].replace(/\D/g, '')
+                    if (num) return `+${num}`
+                }
+            } catch { /* silent */ }
+
+            // Method 3: Check if lid-mapping key store has it
+            try {
+                const keys = (conn.sock as any).authState?.keys
+                if (keys) {
+                    const result = await keys.get('lid-mapping', [chatId])
+                    const mapped = result?.[chatId]
+                    if (mapped) {
+                        const num = String(mapped).replace('@s.whatsapp.net', '').replace(/\D/g, '')
+                        if (num) return `+${num}`
+                    }
+                }
+            } catch { /* silent */ }
         }
+
+        // Last resort: strip suffix and check if it looks like a phone
+        const raw = chatId.replace(/@.*$/, '').replace(/\D/g, '')
+        return raw.length >= 8 ? `+${raw}` : null
     },
 
     async sendText(botId: string, toPhone: string, text: string): Promise<boolean> {
