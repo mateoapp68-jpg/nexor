@@ -16,6 +16,55 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         return NextResponse.json({ error: 'Solo se pueden agregar contactos en campañas en borrador' }, { status: 400 })
     }
 
+    const contentType = req.headers.get('content-type') || ''
+
+    // ── JSON mode: contacts from WhatsApp labels ──
+    if (contentType.includes('application/json')) {
+        const body = await req.json()
+        const phones: string[] = body.phones || []
+        if (phones.length === 0) {
+            return NextResponse.json({ error: 'No se recibieron contactos' }, { status: 400 })
+        }
+
+        const contacts = phones.map(p => ({
+            phone: p.startsWith('+') ? p : `+${p}`,
+            name: null as string | null,
+        }))
+
+        const seen = new Set<string>()
+        const unique = contacts.filter(c => {
+            if (seen.has(c.phone)) return false
+            seen.add(c.phone)
+            return true
+        })
+
+        await (prisma as any).broadcastContact.deleteMany({
+            where: { campaignId: params.id, status: 'PENDING' },
+        })
+
+        const CHUNK = 500
+        for (let i = 0; i < unique.length; i += CHUNK) {
+            await (prisma as any).broadcastContact.createMany({
+                data: unique.slice(i, i + CHUNK).map(c => ({
+                    campaignId: params.id,
+                    phone: c.phone,
+                    name: c.name,
+                    status: 'PENDING',
+                })),
+                skipDuplicates: true,
+            })
+        }
+
+        const total = await (prisma as any).broadcastContact.count({ where: { campaignId: params.id } })
+        await (prisma as any).broadcastCampaign.update({
+            where: { id: params.id },
+            data: { totalContacts: total },
+        })
+
+        return NextResponse.json({ imported: unique.length, errors: 0, duplicates: contacts.length - unique.length, total })
+    }
+
+    // ── FormData mode: Excel file upload ──
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'Archivo Excel requerido' }, { status: 400 })

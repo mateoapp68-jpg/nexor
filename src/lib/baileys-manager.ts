@@ -27,6 +27,18 @@ import { createNotification } from './notifications'
 
 export type BaileysStatus = 'disconnected' | 'connecting' | 'qr_ready' | 'connected'
 
+export interface WhatsAppLabel {
+    id: string
+    name: string
+    color: number
+    predefinedId?: string
+}
+
+export interface LabelAssociation {
+    labelId: string
+    chatId: string
+}
+
 interface BaileysConnection {
     status: BaileysStatus
     qrBase64?: string
@@ -36,6 +48,8 @@ interface BaileysConnection {
     reportPhone: string
     botId: string
     botName: string
+    labels: Map<string, WhatsAppLabel>
+    labelChats: LabelAssociation[]
 }
 
 // ── In-memory store (global para sobrevivir Next.js HMR) ──────────────────────
@@ -445,6 +459,24 @@ export const BaileysManager = {
         return { status: conn.status, qrBase64: conn.qrBase64, phone: conn.phone }
     },
 
+    getLabels(botId: string): WhatsAppLabel[] {
+        const conn = connections.get(botId)
+        if (!conn) return []
+        return Array.from(conn.labels.values())
+    },
+
+    getLabelContacts(botId: string, labelId: string): string[] {
+        const conn = connections.get(botId)
+        if (!conn) return []
+        return conn.labelChats
+            .filter(a => a.labelId === labelId)
+            .map(a => {
+                // chatId format: "591XXXXXXXX@s.whatsapp.net" → "+591XXXXXXXX"
+                const phone = a.chatId.replace('@s.whatsapp.net', '').replace('@lid', '')
+                return `+${phone}`
+            })
+    },
+
     async sendText(botId: string, toPhone: string, text: string): Promise<boolean> {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
@@ -491,7 +523,7 @@ export const BaileysManager = {
         const sessionDir = path.join(SESSIONS_DIR, botId)
         if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true })
 
-        const conn: BaileysConnection = { status: 'connecting', openaiKey, reportPhone, botId, botName }
+        const conn: BaileysConnection = { status: 'connecting', openaiKey, reportPhone, botId, botName, labels: new Map(), labelChats: [] }
         connections.set(botId, conn)
 
         try {
@@ -548,6 +580,40 @@ export const BaileysManager = {
                     handleMessage(conn, msg).catch(err =>
                         console.error(`[BAILEYS] Error procesando mensaje botId=${botId}:`, err)
                     )
+                }
+            })
+
+            // ── Labels sync ──────────────────────────────────────────────
+            sock.ev.on('labels.edit', (label: any) => {
+                if (label.deleted) {
+                    conn.labels.delete(label.id)
+                    conn.labelChats = conn.labelChats.filter(a => a.labelId !== label.id)
+                } else {
+                    conn.labels.set(label.id, {
+                        id: label.id,
+                        name: label.name,
+                        color: label.color ?? 0,
+                        predefinedId: label.predefinedId,
+                    })
+                }
+                console.log(`[BAILEYS] Label sync botId=${botId}: ${conn.labels.size} etiquetas`)
+            })
+
+            sock.ev.on('labels.association', ({ type: actionType, association }: any) => {
+                if (association?.type === 'label_jid') {
+                    if (actionType === 'add') {
+                        // Avoid duplicates
+                        const exists = conn.labelChats.some(
+                            a => a.labelId === association.labelId && a.chatId === association.chatId
+                        )
+                        if (!exists) {
+                            conn.labelChats.push({ labelId: association.labelId, chatId: association.chatId })
+                        }
+                    } else {
+                        conn.labelChats = conn.labelChats.filter(
+                            a => !(a.labelId === association.labelId && a.chatId === association.chatId)
+                        )
+                    }
                 }
             })
 

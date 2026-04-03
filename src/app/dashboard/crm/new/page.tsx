@@ -5,8 +5,30 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft, Upload, X, Loader2, AlertCircle, CheckCircle2,
-    Bot, Clock, Calendar, Users, Sparkles, Image as ImageIcon, Film
+    Bot, Clock, Calendar, Users, Sparkles, Image as ImageIcon, Film,
+    Tag, Pencil, Trash2, Plus, Phone
 } from 'lucide-react'
+
+interface ContactEntry {
+    phone: string
+    name: string | null
+}
+
+interface LabelData {
+    id: string
+    name: string
+    color: number
+    contacts: string[]
+    contactCount: number
+}
+
+const LABEL_COLORS: Record<number, string> = {
+    0: '#64748b', 1: '#f97316', 2: '#84cc16', 3: '#a855f7',
+    4: '#ec4899', 5: '#14b8a6', 6: '#3b82f6', 7: '#ef4444',
+    8: '#06b6d4', 9: '#eab308', 10: '#8b5cf6', 11: '#f43f5e',
+    12: '#10b981', 13: '#6366f1', 14: '#d946ef', 15: '#0ea5e9',
+    16: '#f59e0b', 17: '#22c55e', 18: '#e11d48', 19: '#7c3aed',
+}
 
 export default function NewCrmCampaignPage() {
     const router = useRouter()
@@ -24,15 +46,45 @@ export default function NewCrmCampaignPage() {
         scheduledAt: '',
     })
     const [mediaFiles, setMediaFiles] = useState<{ file: File; preview: string; type: 'IMAGE' | 'VIDEO' }[]>([])
+
+    // Contact source
+    const [contactSource, setContactSource] = useState<'excel' | 'label'>('excel')
+    const [contacts, setContacts] = useState<ContactEntry[]>([])
+
+    // Excel
     const [excelFile, setExcelFile] = useState<File | null>(null)
-    const [contactsPreview, setContactsPreview] = useState<{ imported: number; errors: number; contacts: { name: string | null; phone: string }[] } | null>(null)
     const [parsingExcel, setParsingExcel] = useState(false)
+
+    // Labels
+    const [labels, setLabels] = useState<LabelData[]>([])
+    const [loadingLabels, setLoadingLabels] = useState(false)
+    const [selectedLabels, setSelectedLabels] = useState<string[]>([])
+
+    // Edit contact
+    const [editingIdx, setEditingIdx] = useState<number | null>(null)
+    const [editPhone, setEditPhone] = useState('')
+    const [editName, setEditName] = useState('')
+
+    // Add manual contact
+    const [showAddContact, setShowAddContact] = useState(false)
+    const [newPhone, setNewPhone] = useState('')
+    const [newName, setNewName] = useState('')
+
     const [loading, setLoading] = useState(false)
     const [uploadingImg, setUploadingImg] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [createdId, setCreatedId] = useState<string | null>(null)
 
     useEffect(() => { fetchBots() }, [])
+
+    // Fetch labels when bot changes
+    useEffect(() => {
+        if (form.botId && botStatuses[form.botId] === 'connected') {
+            fetchLabels(form.botId)
+        } else {
+            setLabels([])
+            setSelectedLabels([])
+        }
+    }, [form.botId, botStatuses])
 
     async function fetchBots() {
         const res = await fetch('/api/bots')
@@ -40,7 +92,6 @@ export default function NewCrmCampaignPage() {
         const baileysBots = (data.bots || []).filter((b: any) => b.type === 'BAILEYS')
         setBots(baileysBots)
         if (baileysBots.length === 1) setForm(f => ({ ...f, botId: baileysBots[0].id }))
-        // Fetch real-time connection status for each Baileys bot
         const statuses: Record<string, string> = {}
         await Promise.all(baileysBots.map(async (b: any) => {
             try {
@@ -52,6 +103,43 @@ export default function NewCrmCampaignPage() {
             }
         }))
         setBotStatuses(statuses)
+    }
+
+    async function fetchLabels(botId: string) {
+        setLoadingLabels(true)
+        try {
+            const res = await fetch(`/api/bots/${botId}/baileys/labels`)
+            const data = await res.json()
+            setLabels(data.labels || [])
+        } catch {
+            setLabels([])
+        }
+        setLoadingLabels(false)
+    }
+
+    function toggleLabel(labelId: string) {
+        setSelectedLabels(prev => {
+            const next = prev.includes(labelId)
+                ? prev.filter(id => id !== labelId)
+                : [...prev, labelId]
+
+            // Update contacts from selected labels
+            const allPhones = new Set<string>()
+            const targetLabels = next
+            for (const label of labels) {
+                if (targetLabels.includes(label.id)) {
+                    for (const phone of label.contacts) {
+                        allPhones.add(phone)
+                    }
+                }
+            }
+            const labelContacts: ContactEntry[] = Array.from(allPhones).map(phone => ({
+                phone,
+                name: null,
+            }))
+            setContacts(labelContacts)
+            return next
+        })
     }
 
     function isVideoFile(file: File): boolean {
@@ -80,7 +168,7 @@ export default function NewCrmCampaignPage() {
         if (!files?.[0]) return
         const file = files[0]
         setExcelFile(file)
-        setContactsPreview(null)
+        setContacts([])
         setParsingExcel(true)
         try {
             const XLSX = await import('xlsx')
@@ -94,29 +182,56 @@ export default function NewCrmCampaignPage() {
             const phoneIdx = headers.findIndex((h: string) => /tel[eé]f|phone|cel|m[oó]vil|n[uú]mero|numero|whatsapp/.test(h))
             const nameIdx = headers.findIndex((h: string) => /nombre|name/.test(h))
 
-            const contacts: { name: string | null; phone: string }[] = []
-            let errors = 0
+            const parsed: ContactEntry[] = []
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i]
                 let phone = phoneIdx >= 0 ? String(row[phoneIdx] ?? '').replace(/\s+/g, '') : ''
                 if (!phone) {
-                    // fallback: first cell that looks like a phone
                     for (const cell of row) {
                         const s = String(cell ?? '').replace(/\s+/g, '')
                         if (/^\+?\d{7,15}$/.test(s)) { phone = s; break }
                     }
                 }
-                if (!phone) { errors++; continue }
-                // Bolivia normalization
+                if (!phone) continue
                 if (/^[67]\d{7}$/.test(phone)) phone = '+591' + phone
                 else if (/^\d{8}$/.test(phone) && /^[67]/.test(phone)) phone = '+591' + phone
                 if (!/^\+/.test(phone)) phone = '+' + phone
                 const name = nameIdx >= 0 ? (String(row[nameIdx] ?? '').trim() || null) : null
-                contacts.push({ name, phone })
+                parsed.push({ phone, name })
             }
-            setContactsPreview({ imported: contacts.length, errors, contacts })
-        } catch { /* silent parse error */ }
+            setContacts(parsed)
+        } catch { /* silent */ }
         finally { setParsingExcel(false) }
+    }
+
+    function startEdit(idx: number) {
+        setEditingIdx(idx)
+        setEditPhone(contacts[idx].phone)
+        setEditName(contacts[idx].name || '')
+    }
+
+    function saveEdit() {
+        if (editingIdx === null) return
+        if (!editPhone.trim()) return
+        setContacts(prev => prev.map((c, i) =>
+            i === editingIdx ? { phone: editPhone.trim(), name: editName.trim() || null } : c
+        ))
+        setEditingIdx(null)
+    }
+
+    function deleteContact(idx: number) {
+        setContacts(prev => prev.filter((_, i) => i !== idx))
+    }
+
+    function addManualContact() {
+        if (!newPhone.trim()) return
+        let phone = newPhone.trim().replace(/\s+/g, '')
+        if (/^[67]\d{7}$/.test(phone)) phone = '+591' + phone
+        if (!/^\+/.test(phone)) phone = '+' + phone
+        setContacts(prev => [...prev, { phone, name: newName.trim() || null }])
+        setNewPhone('')
+        setNewName('')
+        setShowAddContact(false)
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -125,7 +240,7 @@ export default function NewCrmCampaignPage() {
 
         if (!form.botId) { setError('Selecciona un bot de WhatsApp'); return }
         if (mediaFiles.length === 0) { setError('Agrega al menos 1 archivo (imagen o video)'); return }
-        if (!excelFile) { setError('Carga el archivo Excel con contactos'); return }
+        if (contacts.length === 0) { setError('Agrega contactos (desde Excel, etiquetas o manualmente)'); return }
 
         setLoading(true)
         try {
@@ -138,7 +253,6 @@ export default function NewCrmCampaignPage() {
             const data = await res.json()
             if (!res.ok) { setError(data.error); return }
             const campaignId = data.campaign.id
-            setCreatedId(campaignId)
 
             // 2. Upload media files
             setUploadingImg(true)
@@ -161,18 +275,32 @@ export default function NewCrmCampaignPage() {
                 return
             }
 
-            // 3. Upload contacts Excel
-            const excelFd = new FormData()
-            excelFd.append('file', excelFile)
-            const excelRes = await fetch(`/api/crm/campaigns/${campaignId}/contacts`, {
-                method: 'POST',
-                body: excelFd,
-            })
-            const excelData = await excelRes.json()
-            if (!excelRes.ok) { setError(excelData.error); return }
-            setContactsPreview(prev => ({ ...(prev ?? { contacts: [] }), imported: excelData.imported, errors: excelData.errors }))
+            // 3. Upload contacts (JSON with phones from labels/manual, or Excel)
+            if (contactSource === 'label' || !excelFile) {
+                const contactRes = await fetch(`/api/crm/campaigns/${campaignId}/contacts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phones: contacts.map(c => c.phone) }),
+                })
+                if (!contactRes.ok) {
+                    const contactData = await contactRes.json()
+                    setError(contactData.error)
+                    return
+                }
+            } else {
+                const excelFd = new FormData()
+                excelFd.append('file', excelFile)
+                const excelRes = await fetch(`/api/crm/campaigns/${campaignId}/contacts`, {
+                    method: 'POST',
+                    body: excelFd,
+                })
+                if (!excelRes.ok) {
+                    const excelData = await excelRes.json()
+                    setError(excelData.error)
+                    return
+                }
+            }
 
-            // Done — redirect to campaign detail
             router.push(`/dashboard/crm/${campaignId}`)
         } catch { setError('Error de conexión') }
         finally { setLoading(false); setUploadingImg(false) }
@@ -363,60 +491,189 @@ export default function NewCrmCampaignPage() {
                     />
                 </div>
 
-                {/* Contactos Excel */}
+                {/* ── CONTACTOS ── */}
                 <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                    <label className="block text-xs font-black uppercase tracking-widest text-white/40 mb-1 flex items-center gap-2">
-                        <Users size={12} /> Contactos desde Excel
+                    <label className="block text-xs font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-2">
+                        <Users size={12} /> Contactos ({contacts.length})
                     </label>
-                    <p className="text-[11px] text-white/25 mb-3">
-                        El Excel debe tener columnas: <span className="text-amber-400/70">teléfono</span> (obligatorio) y <span className="text-amber-400/70">nombre</span> (opcional).
-                        Formatos aceptados: .xlsx, .xls, .csv
-                    </p>
 
-                    <button
-                        type="button"
-                        onClick={() => excelInputRef.current?.click()}
-                        className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed transition-all ${excelFile ? 'border-green-500/40 bg-green-500/5' : 'border-white/15 hover:border-amber-500/40'}`}
-                    >
-                        {excelFile ? (
-                            <>
-                                <CheckCircle2 size={18} className="text-green-400 shrink-0" />
-                                <div className="text-left">
-                                    <p className="text-sm font-bold text-green-400">{excelFile.name}</p>
-                                    <p className="text-xs text-white/30">{(excelFile.size / 1024).toFixed(1)} KB</p>
-                                </div>
-                                <button type="button" onClick={e => { e.stopPropagation(); setExcelFile(null) }} className="ml-auto text-white/30 hover:text-red-400">
-                                    <X size={14} />
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Upload size={18} className="text-white/30 shrink-0" />
-                                <p className="text-sm text-white/30">Seleccionar archivo Excel</p>
-                            </>
-                        )}
-                    </button>
-                    <input ref={excelInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleExcelSelect(e.target.files)} />
+                    {/* Source tabs */}
+                    <div className="flex gap-2 mb-4">
+                        <button
+                            type="button"
+                            onClick={() => { setContactSource('excel'); setContacts([]); setSelectedLabels([]) }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${contactSource === 'excel' ? 'bg-amber-500/15 border border-amber-500/40 text-amber-400' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white/60'}`}
+                        >
+                            <Upload size={14} /> Desde Excel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setContactSource('label'); setContacts([]); setExcelFile(null) }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${contactSource === 'label' ? 'bg-amber-500/15 border border-amber-500/40 text-amber-400' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white/60'}`}
+                        >
+                            <Tag size={14} /> Desde Etiquetas
+                        </button>
+                    </div>
 
-                    {/* Contacts preview */}
-                    {parsingExcel && (
-                        <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
-                            <Loader2 size={12} className="animate-spin" /> Leyendo contactos...
-                        </div>
-                    )}
-                    {contactsPreview && contactsPreview.contacts.length > 0 && (
-                        <div className="mt-3">
-                            <p className="text-[11px] text-white/30 mb-2">
-                                <span className="text-green-400 font-bold">{contactsPreview.imported} contactos</span> cargados
-                                {contactsPreview.errors > 0 && <span className="text-red-400 ml-1">· {contactsPreview.errors} errores</span>}
+                    {/* Excel upload */}
+                    {contactSource === 'excel' && (
+                        <>
+                            <p className="text-[11px] text-white/25 mb-3">
+                                El Excel debe tener columna <span className="text-amber-400/70">teléfono</span> (obligatorio). <span className="text-amber-400/70">Nombre</span> es opcional.
                             </p>
-                            <div className="max-h-48 overflow-y-auto rounded-xl border border-white/8 divide-y divide-white/5">
-                                {contactsPreview.contacts.map((c, i) => (
-                                    <div key={i} className="flex items-center gap-3 px-3 py-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-400/60 shrink-0" />
-                                        <p className="text-xs text-white/70 truncate">
-                                            {c.name ? <><span className="font-bold">{c.name}</span> <span className="text-white/30">{c.phone}</span></> : c.phone}
-                                        </p>
+                            <button
+                                type="button"
+                                onClick={() => excelInputRef.current?.click()}
+                                className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed transition-all ${excelFile ? 'border-green-500/40 bg-green-500/5' : 'border-white/15 hover:border-amber-500/40'}`}
+                            >
+                                {excelFile ? (
+                                    <>
+                                        <CheckCircle2 size={18} className="text-green-400 shrink-0" />
+                                        <div className="text-left">
+                                            <p className="text-sm font-bold text-green-400">{excelFile.name}</p>
+                                            <p className="text-xs text-white/30">{(excelFile.size / 1024).toFixed(1)} KB</p>
+                                        </div>
+                                        <button type="button" onClick={e => { e.stopPropagation(); setExcelFile(null); setContacts([]) }} className="ml-auto text-white/30 hover:text-red-400">
+                                            <X size={14} />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload size={18} className="text-white/30 shrink-0" />
+                                        <p className="text-sm text-white/30">Seleccionar archivo Excel (.xlsx, .xls, .csv)</p>
+                                    </>
+                                )}
+                            </button>
+                            <input ref={excelInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleExcelSelect(e.target.files)} />
+                            {parsingExcel && (
+                                <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
+                                    <Loader2 size={12} className="animate-spin" /> Leyendo contactos...
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Labels */}
+                    {contactSource === 'label' && (
+                        <>
+                            {!form.botId ? (
+                                <p className="text-xs text-white/30">Seleccioná un bot primero</p>
+                            ) : botStatuses[form.botId] !== 'connected' ? (
+                                <p className="text-xs text-red-400/70">El bot debe estar conectado para ver las etiquetas</p>
+                            ) : loadingLabels ? (
+                                <div className="flex items-center gap-2 text-xs text-white/40">
+                                    <Loader2 size={12} className="animate-spin" /> Cargando etiquetas...
+                                </div>
+                            ) : labels.length === 0 ? (
+                                <p className="text-xs text-white/30">No se encontraron etiquetas en esta cuenta de WhatsApp Business</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-[11px] text-white/25">Seleccioná una o varias etiquetas para cargar sus contactos</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {labels.map(label => {
+                                            const selected = selectedLabels.includes(label.id)
+                                            const color = LABEL_COLORS[label.color] || '#64748b'
+                                            return (
+                                                <button
+                                                    key={label.id}
+                                                    type="button"
+                                                    onClick={() => toggleLabel(label.id)}
+                                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${selected ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+                                                >
+                                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                                    <span className={selected ? 'text-white' : 'text-white/60'}>{label.name}</span>
+                                                    <span className="text-[10px] text-white/30 ml-1">{label.contactCount}</span>
+                                                    {selected && <CheckCircle2 size={12} className="text-green-400" />}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Contact list (editable) */}
+                    {contacts.length > 0 && (
+                        <div className="mt-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[11px] text-white/30">
+                                    <span className="text-green-400 font-bold">{contacts.length} contactos</span> cargados
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddContact(true)}
+                                    className="flex items-center gap-1 text-[11px] text-amber-400/70 hover:text-amber-400 transition-all"
+                                >
+                                    <Plus size={12} /> Agregar
+                                </button>
+                            </div>
+
+                            {/* Add manual contact */}
+                            {showAddContact && (
+                                <div className="flex gap-2 mb-2 p-2 rounded-xl bg-white/5 border border-white/10">
+                                    <input
+                                        value={newPhone}
+                                        onChange={e => setNewPhone(e.target.value)}
+                                        placeholder="Teléfono"
+                                        className="flex-1 bg-transparent text-xs text-white placeholder-white/20 focus:outline-none px-2"
+                                    />
+                                    <input
+                                        value={newName}
+                                        onChange={e => setNewName(e.target.value)}
+                                        placeholder="Nombre (opcional)"
+                                        className="flex-1 bg-transparent text-xs text-white placeholder-white/20 focus:outline-none px-2"
+                                    />
+                                    <button type="button" onClick={addManualContact} className="text-green-400 hover:text-green-300">
+                                        <CheckCircle2 size={14} />
+                                    </button>
+                                    <button type="button" onClick={() => { setShowAddContact(false); setNewPhone(''); setNewName('') }} className="text-white/30 hover:text-red-400">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="max-h-60 overflow-y-auto rounded-xl border border-white/8 divide-y divide-white/5">
+                                {contacts.map((c, i) => (
+                                    <div key={i} className="flex items-center gap-2 px-3 py-2 group">
+                                        {editingIdx === i ? (
+                                            <>
+                                                <input
+                                                    value={editPhone}
+                                                    onChange={e => setEditPhone(e.target.value)}
+                                                    className="flex-1 bg-white/5 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                                                />
+                                                <input
+                                                    value={editName}
+                                                    onChange={e => setEditName(e.target.value)}
+                                                    placeholder="Nombre"
+                                                    className="flex-1 bg-white/5 rounded px-2 py-1 text-xs text-white placeholder-white/20 focus:outline-none"
+                                                />
+                                                <button type="button" onClick={saveEdit} className="text-green-400 hover:text-green-300">
+                                                    <CheckCircle2 size={13} />
+                                                </button>
+                                                <button type="button" onClick={() => setEditingIdx(null)} className="text-white/30 hover:text-red-400">
+                                                    <X size={13} />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Phone size={10} className="text-white/20 shrink-0" />
+                                                <p className="text-xs text-white/70 truncate flex-1">
+                                                    {c.name ? (
+                                                        <><span className="font-bold">{c.name}</span> <span className="text-white/30">{c.phone}</span></>
+                                                    ) : (
+                                                        <span>{c.phone}</span>
+                                                    )}
+                                                </p>
+                                                <button type="button" onClick={() => startEdit(i)} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-amber-400 transition-all">
+                                                    <Pencil size={12} />
+                                                </button>
+                                                <button type="button" onClick={() => deleteContact(i)} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all">
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 ))}
                             </div>
