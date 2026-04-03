@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
     Plus, Play, Pause, Trash2, Eye, Users, CheckCircle2,
-    XCircle, Clock, Loader2, MessageSquare, Image as ImageIcon, AlertCircle
+    XCircle, Clock, Loader2, MessageSquare, Image as ImageIcon, AlertCircle,
+    Download
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -85,13 +86,21 @@ export default function CrmPage() {
                     <h1 className="text-2xl font-black uppercase tracking-tighter">CRM Broadcast</h1>
                     <p className="text-white/40 text-sm mt-0.5">Envíos masivos por WhatsApp con IA</p>
                 </div>
-                <Link
-                    href="/dashboard/crm/new"
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-wide text-white transition-all hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
-                >
-                    <Plus size={15} /> Nueva campaña
-                </Link>
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/dashboard/crm/export"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-white/10 bg-white/5 text-white/60 hover:text-amber-400 hover:border-amber-500/40 transition-all"
+                    >
+                        <Download size={15} /> Exportar
+                    </Link>
+                    <Link
+                        href="/dashboard/crm/new"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-black uppercase tracking-wide text-white transition-all hover:opacity-90"
+                        style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
+                    >
+                        <Plus size={15} /> Nueva campaña
+                    </Link>
+                </div>
             </div>
 
             {error && (
