@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
         const labels = BaileysManager.getLabels(botId)
         const label = labels.find(l => l.id === labelId)
-        const phones = BaileysManager.getLabelContacts(botId, labelId)
+        const phones = await BaileysManager.getLabelContacts(botId, labelId)
 
         // Try to match with existing conversations for names
         const conversations = await prisma.conversation.findMany({

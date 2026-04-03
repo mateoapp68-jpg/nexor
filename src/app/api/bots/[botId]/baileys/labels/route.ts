@@ -34,15 +34,18 @@ export async function GET(
     let labels = BaileysManager.getLabels(params.botId)
     if (labels.length === 0) {
         await BaileysManager.resyncLabels(params.botId)
-        // Wait a moment for events to process
         await new Promise(r => setTimeout(r, 3000))
         labels = BaileysManager.getLabels(params.botId)
     }
 
-    const labelsWithCount = labels.map(label => ({
-        ...label,
-        contacts: BaileysManager.getLabelContacts(params.botId, label.id),
-        contactCount: BaileysManager.getLabelContacts(params.botId, label.id).length,
+    // Resolve contacts for each label (async because of LID resolution)
+    const labelsWithCount = await Promise.all(labels.map(async label => {
+        const contacts = await BaileysManager.getLabelContacts(params.botId, label.id)
+        return {
+            ...label,
+            contacts,
+            contactCount: contacts.length,
+        }
     }))
 
     return NextResponse.json({
@@ -75,14 +78,16 @@ export async function POST(
         return NextResponse.json({ error: 'No se pudo sincronizar. Puede que no sea cuenta Business.' }, { status: 400 })
     }
 
-    // Wait for events to process
     await new Promise(r => setTimeout(r, 3000))
     const labels = BaileysManager.getLabels(params.botId)
 
-    const labelsWithCount = labels.map(label => ({
-        ...label,
-        contacts: BaileysManager.getLabelContacts(params.botId, label.id),
-        contactCount: BaileysManager.getLabelContacts(params.botId, label.id).length,
+    const labelsWithCount = await Promise.all(labels.map(async label => {
+        const contacts = await BaileysManager.getLabelContacts(params.botId, label.id)
+        return {
+            ...label,
+            contacts,
+            contactCount: contacts.length,
+        }
     }))
 
     return NextResponse.json({ labels: labelsWithCount, resynced: true })

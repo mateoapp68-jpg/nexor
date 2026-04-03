@@ -478,16 +478,36 @@ export const BaileysManager = {
         }
     },
 
-    getLabelContacts(botId: string, labelId: string): string[] {
+    async getLabelContacts(botId: string, labelId: string): Promise<string[]> {
         const conn = connections.get(botId)
-        if (!conn) return []
-        return conn.labelChats
+        if (!conn?.sock) return []
+
+        const chatIds = conn.labelChats
             .filter(a => a.labelId === labelId)
-            .map(a => {
-                // chatId format: "591XXXXXXXX@s.whatsapp.net" → "+591XXXXXXXX"
-                const phone = a.chatId.replace('@s.whatsapp.net', '').replace('@lid', '')
-                return `+${phone}`
-            })
+            .map(a => a.chatId)
+
+        const phones: string[] = []
+        for (const chatId of chatIds) {
+            if (chatId.endsWith('@lid')) {
+                // LID format — resolve to real phone number
+                try {
+                    const pn = await (conn.sock as any).signalRepository?.lidMapping?.getPNForLID(chatId)
+                    if (pn) {
+                        const num = pn.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+                        if (num) phones.push(`+${num}`)
+                    } else {
+                        console.log(`[BAILEYS] Could not resolve LID ${chatId} to phone`)
+                    }
+                } catch {
+                    console.log(`[BAILEYS] LID resolution failed for ${chatId}`)
+                }
+            } else {
+                // Normal format: "591XXXXXXXX@s.whatsapp.net"
+                const phone = chatId.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+                if (phone) phones.push(`+${phone}`)
+            }
+        }
+        return phones
     },
 
     async sendText(botId: string, toPhone: string, text: string): Promise<boolean> {
