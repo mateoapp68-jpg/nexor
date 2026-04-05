@@ -1,15 +1,31 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Bookmark, CheckCircle2, AlertCircle, MousePointer, Globe, Play } from 'lucide-react'
+import { ArrowLeft, Bookmark, CheckCircle2, AlertCircle, MousePointer, Globe, Play, Copy, Code } from 'lucide-react'
 import { BOOKMARKLET_CODE } from '@/lib/bookmarklet-source'
 
-// Minify and URL-encode the bookmarklet code
+// URL-encode the bookmarklet (collapse newlines to single spaces)
 const bookmarkletHref = 'javascript:' + encodeURIComponent(
-    BOOKMARKLET_CODE.replace(/\n\s*/g, '').replace(/\s{2,}/g, ' ')
+    BOOKMARKLET_CODE.replace(/\r?\n/g, ' ')
 )
 
+// Plain code for "paste in console" option
+const rawCode = BOOKMARKLET_CODE.replace(/\r?\n/g, '\n')
+
 export default function BookmarkletPage() {
+    const [copied, setCopied] = useState(false)
+
+    async function copyCode() {
+        try {
+            await navigator.clipboard.writeText(rawCode)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2500)
+        } catch {
+            alert('No se pudo copiar. Seleccioná y copiá manualmente.')
+        }
+    }
+
     return (
         <div className="px-4 md:px-6 pt-6 max-w-2xl mx-auto pb-24 text-white">
             {/* Header */}
@@ -55,6 +71,47 @@ export default function BookmarkletPage() {
 
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-[11px] text-white/70 leading-relaxed">
                     <b className="text-amber-400">⚠️ Importante:</b> Si tu barra de marcadores está oculta, presioná <b className="text-white">Ctrl+Shift+B</b> para mostrarla antes de arrastrar.
+                </div>
+            </div>
+
+            {/* Método alternativo: pegar en consola */}
+            <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5 mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                        <Code size={18} className="text-green-400" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-white">Método alternativo: Pegar en consola</p>
+                        <p className="text-[10px] text-white/40">Si el bookmarklet no funciona, usá esto — siempre funciona</p>
+                    </div>
+                </div>
+
+                <div className="bg-black/40 border border-white/5 rounded-xl p-3 mb-3 font-mono text-[10px] text-white/50 max-h-24 overflow-y-auto">
+                    <code>(function(){"{ if(window.__nexorLoaded){...} }"})();  <span className="text-white/30">// {rawCode.length} chars</span></code>
+                </div>
+
+                <button
+                    onClick={copyCode}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-black transition-all hover:opacity-90"
+                    style={{ background: copied ? '#22c55e' : 'linear-gradient(135deg, #15803d, #22c55e)' }}
+                >
+                    {copied ? <><CheckCircle2 size={14} /> Copiado ✓</> : <><Copy size={14} /> Copiar código</>}
+                </button>
+
+                <div className="mt-4 space-y-2 text-[11px] text-white/60 leading-relaxed">
+                    <p className="font-bold text-white">Pasos para usar este método:</p>
+                    <ol className="space-y-1 list-decimal pl-5">
+                        <li>Click en <b className="text-green-400">"Copiar código"</b> arriba</li>
+                        <li>Abrí <code className="bg-white/10 px-1 py-0.5 rounded text-amber-400 text-[10px]">web.whatsapp.com</code> y esperá que cargue</li>
+                        <li>Presioná <b className="text-white">F12</b> para abrir DevTools</li>
+                        <li>Andá a la pestaña <b className="text-white">"Console"</b></li>
+                        <li>Pegá el código con <b className="text-white">Ctrl+V</b></li>
+                        <li>Presioná <b className="text-white">Enter</b></li>
+                        <li>Aparece el panel flotante de Nexor en la esquina</li>
+                    </ol>
+                    <p className="text-[10px] text-white/40 mt-2 italic">
+                        ⚠️ La primera vez Chrome te puede pedir que escribas "allow pasting" antes de permitir pegar código en la consola. Hacelo y después pegá de nuevo.
+                    </p>
                 </div>
             </div>
 
