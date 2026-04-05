@@ -1,4 +1,4 @@
-// Nexor Contacts Extractor — popup.js
+// Nexor Contacts Extractor — popup.js (v3.0.0)
 
 const $ = (id) => document.getElementById(id)
 
@@ -20,11 +20,12 @@ const selectAllBtn = $('selectAllBtn')
 const searchInput = $('searchInput')
 const itemsList = $('itemsList')
 
-let currentMode = null
+let currentMode = null // 'groups' | 'labels'
 let items = []
 let filtered = []
 let exportMode = 'phone'
 
+// ─── Logging ───────────────────────────────────────────────────────────────
 function log(msg, type = '') {
     logEl.classList.add('show')
     const entry = document.createElement('div')
@@ -35,6 +36,7 @@ function log(msg, type = '') {
 }
 function clearLog() { logEl.innerHTML = ''; logEl.classList.remove('show') }
 
+// ─── Views ─────────────────────────────────────────────────────────────────
 function showView(view) {
     viewMain.classList.remove('active')
     viewSelect.classList.remove('active')
@@ -59,102 +61,74 @@ backBtn.addEventListener('click', () => {
     clearLog()
 })
 
-// ─── Tab communication ─────────────────────────────────────────────────────
+// ─── Communication ─────────────────────────────────────────────────────────
 async function findWhatsAppTab() {
-    // Try all windows (not just current)
     const tabs = await chrome.tabs.query({})
-    const waTab = tabs.find(t => t.url?.startsWith('https://web.whatsapp.com'))
-    return waTab || null
+    return tabs.find(t => t.url?.includes('web.whatsapp.com')) || null
 }
 
-async function callContent(action, params = {}, timeoutMs = 5 * 60 * 1000) {
+async function callContent(action, params = {}, timeoutMs = 10 * 60 * 1000) {
     const tab = await findWhatsAppTab()
     if (!tab?.id) {
         return { success: false, error: 'NO_WA_TAB' }
     }
     try {
         const responsePromise = chrome.tabs.sendMessage(tab.id, { action, params })
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs))
-        return await Promise.race([responsePromise, timeout])
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+        )
+        return await Promise.race([responsePromise, timeoutPromise])
     } catch (err) {
         const msg = err?.message || String(err)
         if (msg.includes('Could not establish connection') || msg.includes('receiving end')) {
             return { success: false, error: 'NO_CONTENT_SCRIPT' }
         }
-        if (msg === 'TIMEOUT') return { success: false, error: 'TIMEOUT' }
         return { success: false, error: msg }
     }
 }
 
 let checkAttempts = 0
 let pollTimer = null
-
-let autoReloadAttempted = false
-
-async function openOrReloadWhatsApp() {
-    const tab = await findWhatsAppTab()
-    if (tab?.id) {
-        // Reload existing tab
-        try {
-            await chrome.tabs.reload(tab.id)
-            await chrome.tabs.update(tab.id, { active: true })
-        } catch { }
-    } else {
-        // Open new WhatsApp Web tab
-        try {
-            await chrome.tabs.create({ url: 'https://web.whatsapp.com/' })
-        } catch { }
-    }
-}
+let autoActionTaken = false
 
 async function checkStatus() {
     checkAttempts++
-    const ping = await callContent('ping', {}, 4000)
+    const ping = await callContent('ping', {}, 3000)
 
     if (ping?.success && ping?.ready) {
-        setStatus('ok', ping.hasLabels ? 'Conectado · Business' : 'Conectado ✓')
-        checkAttempts = 0
-        autoReloadAttempted = false
+        setStatus('ok', 'Conectado a WhatsApp Web ✓')
         return
     }
 
-    // No WhatsApp tab open — open it automatically
     if (ping?.error === 'NO_WA_TAB') {
-        if (!autoReloadAttempted) {
-            autoReloadAttempted = true
+        if (!autoActionTaken) {
+            autoActionTaken = true
             setStatus('loading', 'Abriendo WhatsApp Web...')
             await chrome.tabs.create({ url: 'https://web.whatsapp.com/', active: true })
             pollTimer = setTimeout(checkStatus, 3000)
             return
         }
-        setStatus('err', 'Escaneá el QR en la pestaña de WhatsApp Web')
+        setStatus('err', 'Escaneá el QR en WhatsApp Web')
         pollTimer = setTimeout(checkStatus, 2000)
         return
     }
 
-    // Content script not injected — inject it manually via scripting API
     if (ping?.error === 'NO_CONTENT_SCRIPT') {
-        if (!autoReloadAttempted) {
-            autoReloadAttempted = true
-            setStatus('loading', 'Inyectando en WhatsApp Web...')
+        if (!autoActionTaken) {
+            autoActionTaken = true
+            setStatus('loading', 'Inyectando script...')
             const tab = await findWhatsAppTab()
             if (tab?.id) {
-                try {
-                    // Inject both scripts programmatically
-                    await chrome.scripting.executeScript({
-                        target: { tabId: tab.id },
-                        files: ['inject.js'],
-                        world: 'MAIN',
-                    })
-                } catch { }
                 try {
                     await chrome.scripting.executeScript({
                         target: { tabId: tab.id },
                         files: ['content.js'],
                     })
-                } catch { }
+                } catch (err) {
+                    log('Inject error: ' + (err?.message || err), 'error')
+                }
             }
-            pollTimer = setTimeout(checkStatus, 3000)
+            pollTimer = setTimeout(checkStatus, 2000)
             return
         }
         setStatus('err', 'Recargá WhatsApp Web (Ctrl+Shift+R)')
@@ -162,27 +136,15 @@ async function checkStatus() {
         return
     }
 
-    // Ping succeeded but store not ready yet — keep polling
-    if (ping?.success && !ping.ready) {
-        setStatus('loading', `Cargando Store... ${checkAttempts}`)
-        if (checkAttempts < 60) {
-            pollTimer = setTimeout(checkStatus, 2000)
-        } else {
-            setStatus('err', 'Timeout. Cerrá y reabrí WhatsApp Web.')
-        }
-        return
-    }
-
-    // Generic retry
-    if (checkAttempts < 60) {
-        setStatus('loading', `Conectando... ${checkAttempts}`)
+    // Still loading
+    if (checkAttempts < 30) {
+        setStatus('loading', `Esperando... ${checkAttempts}`)
         pollTimer = setTimeout(checkStatus, 2000)
     } else {
-        setStatus('err', 'No responde. Recargá WhatsApp Web.')
+        setStatus('err', 'Recargá WhatsApp Web manualmente')
     }
 }
 
-// Stop polling when popup closes
 window.addEventListener('unload', () => {
     if (pollTimer) clearTimeout(pollTimer)
 })
@@ -210,12 +172,12 @@ async function downloadCsv(rows, filename) {
         setTimeout(() => URL.revokeObjectURL(url), 2000)
         return true
     } catch (err) {
-        log(`Error al descargar: ${err?.message}`, 'error')
+        log(`Error: ${err?.message}`, 'error')
         return false
     }
 }
 
-// ─── Load list ─────────────────────────────────────────────────────────────
+// ─── Load list (groups or labels) ──────────────────────────────────────────
 async function loadList(mode) {
     currentMode = mode
     items = []; filtered = []
@@ -235,10 +197,8 @@ async function loadList(mode) {
 
     const list = mode === 'groups' ? result.groups : result.labels
     items = (list || []).map(x => ({
-        id: x.id,
+        index: x.index,
         name: x.name,
-        total: mode === 'groups' ? x.totalMembers : x.totalContacts,
-        resolved: mode === 'groups' ? x.resolvedMembers : x.resolvedContacts,
         selected: false,
     }))
     filtered = [...items]
@@ -247,7 +207,7 @@ async function loadList(mode) {
 
 function renderItems() {
     if (filtered.length === 0) {
-        itemsList.innerHTML = `<div class="empty">${items.length === 0 ? 'Sin resultados' : 'No coincide con la búsqueda'}</div>`
+        itemsList.innerHTML = `<div class="empty">${items.length === 0 ? 'Sin resultados' : 'Sin coincidencias'}</div>`
         btnExport.disabled = true
         return
     }
@@ -263,14 +223,8 @@ function renderItems() {
       </div>
       <div class="item-body">
         <div class="item-name"></div>
-        <div class="item-meta"><span class="resolved"></span><span class="unresolved"></span></div>
       </div>`
         div.querySelector('.item-name').textContent = item.name
-        div.querySelector('.resolved').textContent = `${item.resolved} reales`
-        const unr = item.total - item.resolved
-        if (unr > 0) {
-            div.querySelector('.unresolved').textContent = ` · ${unr} sin resolver`
-        }
         div.addEventListener('click', () => {
             item.selected = !item.selected
             renderItems()
@@ -294,7 +248,6 @@ selectAllBtn.addEventListener('click', () => {
     renderItems()
 })
 
-// Export mode radios
 document.querySelectorAll('.radio[data-mode]').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.radio[data-mode]').forEach(b => b.classList.remove('active'))
@@ -310,7 +263,6 @@ document.querySelectorAll('.radio[data-mode-all]').forEach(btn => {
     })
 })
 
-// Main menu buttons
 btnGroups.addEventListener('click', () => loadList('groups'))
 btnLabels.addEventListener('click', () => loadList('labels'))
 btnAll.addEventListener('click', () => {
@@ -318,34 +270,49 @@ btnAll.addEventListener('click', () => {
     showView(viewAll)
 })
 
-// Export selected
+// ─── Export selected groups/labels ─────────────────────────────────────────
 btnExport.addEventListener('click', async () => {
     const selected = items.filter(i => i.selected)
     if (!selected.length) return
     btnExport.disabled = true
     clearLog()
-    log(`Extrayendo ${selected.length} ${currentMode === 'groups' ? 'grupo(s)' : 'etiqueta(s)'}...`)
 
-    const action = currentMode === 'groups' ? 'getGroupContacts' : 'getLabelContacts'
-    const key = currentMode === 'groups' ? 'groupIds' : 'labelIds'
-    const result = await callContent(action, { [key]: selected.map(s => s.id) })
-
-    if (result?.success) {
-        log(`${result.contacts.length} contactos reales`, 'success')
-        const filename = currentMode === 'groups' ? 'nexor_grupos' : 'nexor_etiquetas'
-        const ok = await downloadCsv(result.contacts, filename)
-        if (ok) log('Descarga iniciada ✓', 'success')
+    if (currentMode === 'groups') {
+        log(`Extrayendo ${selected.length} grupo(s)...`)
+        log('⚠️ Esto puede tardar varios minutos — la extensión abre cada grupo y hace scroll')
+        const result = await callContent('getGroupContacts', {
+            groupIndexes: selected.map(s => s.index),
+            groupNames: selected.map(s => s.name),
+        })
+        if (result?.success) {
+            log(`${result.contacts.length} contactos extraídos`, 'success')
+            const ok = await downloadCsv(result.contacts, 'nexor_grupos')
+            if (ok) log('Descarga iniciada ✓', 'success')
+        } else {
+            log(result?.error || 'Error', 'error')
+        }
     } else {
-        log(result?.error || 'Error', 'error')
+        log(`Extrayendo ${selected.length} etiqueta(s)...`)
+        const result = await callContent('getLabelContacts', {
+            labelNames: selected.map(s => s.name),
+        })
+        if (result?.success) {
+            log(`${result.contacts.length} contactos extraídos`, 'success')
+            const ok = await downloadCsv(result.contacts, 'nexor_etiquetas')
+            if (ok) log('Descarga iniciada ✓', 'success')
+        } else {
+            log(result?.error || 'Error', 'error')
+        }
     }
     btnExport.disabled = false
 })
 
-// Export all chats
+// ─── Export all chats ──────────────────────────────────────────────────────
 btnExportAll.addEventListener('click', async () => {
     btnExportAll.disabled = true
     clearLog()
     log('Extrayendo todos los chats...')
+    log('⚠️ Tarda varios minutos — abre cada chat uno por uno')
     const result = await callContent('listAllChats', {})
     if (result?.success) {
         log(`${result.contacts.length} contactos`, 'success')
