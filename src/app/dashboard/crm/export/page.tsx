@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
     ArrowLeft, Download, Loader2, Bot, Users,
-    ShoppingCart, MessageSquare, FileSpreadsheet, CheckCircle2, Globe, Package
+    ShoppingCart, MessageSquare, FileSpreadsheet, CheckCircle2, Package
 } from 'lucide-react'
 
 interface BotOption {
@@ -97,59 +97,27 @@ export default function CrmExportPage() {
                 </div>
             </div>
 
-            {/* Extensión Chrome — Método recomendado */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-amber-600/10 to-yellow-500/10 border-2 border-amber-500/30 rounded-2xl p-5 mb-4">
+            {/* Nexor Extractor — Bookmarklet */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-amber-600/10 to-yellow-500/10 border-2 border-amber-500/30 rounded-2xl p-5 mb-6">
                 <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
                         <Package size={22} className="text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-black text-white">Extensión Chrome</p>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-black">RECOMENDADO</span>
+                            <p className="text-sm font-black text-white">Nexor Extractor</p>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-black">SIN INSTALAR</span>
                         </div>
                         <p className="text-[11px] text-white/60 mb-3 leading-relaxed">
-                            Extrae <span className="text-amber-400 font-bold">100% números reales</span> de grupos, etiquetas y contactos de WhatsApp Web. Accede directo al Store interno de WhatsApp. Funciona sin importar si el bot tiene conversaciones previas.
+                            Arrastrá un botón a tu barra de marcadores. Con WhatsApp Web abierto, hacés click y extrae <span className="text-amber-400 font-bold">números reales</span> de grupos y etiquetas. Cero instalación.
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <a
-                                href="/downloads/nexor-contacts-extractor.zip"
-                                download
+                            <Link
+                                href="/dashboard/crm/extract/bookmarklet"
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-black transition-all hover:opacity-90"
                                 style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
                             >
-                                <Package size={12} /> Descargar extensión
-                            </a>
-                            <Link
-                                href="/dashboard/crm/extract/install-guide"
-                                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-bold text-white/60 hover:text-amber-400 border border-white/10 hover:border-amber-500/40 transition-all"
-                            >
-                                Cómo instalar
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Extractor desde tu bot (alternativa) */}
-            <div className="relative overflow-hidden bg-white/[0.03] border border-white/8 rounded-2xl p-5 mb-6">
-                <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <Globe size={22} className="text-white/50" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-black text-white/80">Alternativa: Extraer desde el bot</p>
-                        </div>
-                        <p className="text-[11px] text-white/40 mb-3 leading-relaxed">
-                            Usa tu bot Baileys conectado. Funciona sin instalar nada pero algunos contactos pueden aparecer sin resolver si el bot no tiene historial.
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Link
-                                href="/dashboard/crm/extract"
-                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold text-white/60 hover:text-amber-400 border border-white/10 hover:border-amber-500/40 transition-all"
-                            >
-                                Abrir extractor Baileys
+                                <Package size={12} /> Obtener Nexor Extractor
                             </Link>
                         </div>
                     </div>
