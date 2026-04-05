@@ -1,265 +1,511 @@
-
-
-
-
-
-
-
-
-
-
-// Nexor WhatsApp Exporter — content script
-// Injected into https://web.whatsapp.com/* to read DOM and extract contacts
+// Nexor WhatsApp Exporter — content script (v1.2.0)
+// Robust detection for groups and labels with multiple fallback strategies
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const LOG = (...args) => console.log('[Nexor Exporter]', ...args)
 
-// Utility: find element by text content
-function findByText(selector, text) {
-    const elements = document.querySelectorAll(selector)
-    for (const el of elements) {
-        if (el.textContent?.trim() === text) return el
-    }
-    return null
-}
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
-// Utility: wait for element to appear
-async function waitFor(selector, timeout = 5000) {
-    const start = Date.now()
-    while (Date.now() - start < timeout) {
-        const el = document.querySelector(selector)
-        if (el) return el
-        await sleep(100)
-    }
-    return null
-}
-
-// Utility: click element and wait
-async function clickAndWait(el, ms = 400) {
+function realClick(el) {
     if (!el) return
-    el.click()
-    await sleep(ms)
+    const rect = el.getBoundingClientRect()
+    const opts = {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+    }
+    el.dispatchEvent(new MouseEvent('mousedown', opts))
+    el.dispatchEvent(new MouseEvent('mouseup', opts))
+    el.dispatchEvent(new MouseEvent('click', opts))
 }
 
-// Extract phone from element (WhatsApp shows phones in various places)
 function extractPhone(text) {
     if (!text) return null
-    // Match international format: +XX XXXXXXXXX
-    const match = text.match(/\+\d[\d\s\-]{7,18}\d/)
-    if (!match) return null
-    return match[0].replace(/[\s\-]/g, '')
+    let match = text.match(/\+\d[\d\s\-\(\)]{7,20}\d/)
+    if (match) return match[0].replace(/[\s\-\(\)]/g, '')
+    match = text.match(/\b\d{8,15}\b/)
+    if (match) return `+${match[0]}`
+    return null
+}
+
+// ─── Find chat list container ─────────────────────────────────────────────────
+function getChatListPane() {
+    // Try multiple strategies — WhatsApp changes DOM frequently
+    const candidates = [
+        '#pane-side [role="grid"]',
+        '[aria-label="Lista de chats"]',
+        '[aria-label="Chat list"]',
+        '[aria-label*="hat"]',
+        '#pane-side [role="list"]',
+        '#pane-side div[tabindex="0"]',
+        '#pane-side',
+    ]
+    for (const sel of candidates) {
+        const el = document.querySelector(sel)
+        if (el) {
+            LOG(`Chat list found via: ${sel}`)
+            return el
+        }
+    }
+    return null
+}
+
+// ─── Get all chat row items ───────────────────────────────────────────────────
+function getChatItems(pane) {
+    if (!pane) return []
+    // Multiple selectors — grab all possible chat row containers
+    const selectors = [
+        '[role="listitem"]',
+        '[role="row"]',
+        '[data-testid^="cell-"]',
+        'div[tabindex="-1"]',
+    ]
+    const allItems = new Set()
+    for (const sel of selectors) {
+        pane.querySelectorAll(sel).forEach(el => {
+            // Must have a span[title] inside to be a chat (not a random div)
+            if (el.querySelector('span[title]')) {
+                allItems.add(el)
+            }
+        })
+    }
+    return Array.from(allItems)
+}
+
+// ─── Is this chat a group? Multiple strategies ───────────────────────────────
+function isGroupChat(chatItem) {
+    if (!chatItem) return false
+
+    // Strategy 1: SVG data-icon hint
+    const groupIcon = chatItem.querySelector(
+        '[data-icon="default-group"],' +
+        '[data-icon="default-group-refreshed"],' +
+        '[data-icon="default-group-light"],' +
+        '[data-testid="default-group"]'
+    )
+    if (groupIcon) return true
+
+    // Strategy 2: aria-label on the item or any child contains "grupo" or "group"
+    const aria = chatItem.getAttribute('aria-label') || ''
+    if (/grupo|group/i.test(aria)) return true
+    const ariaChild = chatItem.querySelector('[aria-label*="rupo"], [aria-label*="roup"]')
+    if (ariaChild) return true
+
+    // Strategy 3: Subtitle pattern "Name: message" (only groups show sender name)
+    // Look for the subtitle span (second span[title] or secondary text)
+    const spans = chatItem.querySelectorAll('span')
+    for (const span of spans) {
+        const text = span.textContent || ''
+        // Pattern: "Nombre: mensaje" at start of preview
+        if (/^[A-ZÁÉÍÓÚÑa-záéíóúñ][\wÁÉÍÓÚÑáéíóúñ\s]{1,25}:\s/.test(text) && text.length < 120) {
+            return true
+        }
+    }
+
+    // Strategy 4: Multi-letter avatar (groups often show "👥" icon)
+    // Look for specific SVG paths used by group icons
+    const svg = chatItem.querySelector('svg')
+    if (svg) {
+        const paths = svg.querySelectorAll('path')
+        if (paths.length >= 2) {
+            // Group icons usually have 2+ path elements (multiple people silhouettes)
+            const svgText = svg.outerHTML
+            if (svgText.includes('circle') && paths.length > 2) return true
+        }
+    }
+
+    return false
+}
+
+// ─── Scrolling ────────────────────────────────────────────────────────────────
+async function fullScroll(container, maxIter = 50, delay = 400) {
+    if (!container) return
+    let lastHeight = -1
+    let stableCount = 0
+    for (let i = 0; i < maxIter; i++) {
+        container.scrollTop = container.scrollHeight
+        await sleep(delay)
+        if (container.scrollHeight === lastHeight) {
+            stableCount++
+            if (stableCount >= 3) break
+        } else {
+            stableCount = 0
+        }
+        lastHeight = container.scrollHeight
+    }
+    container.scrollTop = 0
+    await sleep(500)
+}
+
+// ─── Get drawer / right panel ─────────────────────────────────────────────────
+function getDrawer() {
+    return document.querySelector(
+        '[data-testid="drawer-right"],' +
+        'div[role="dialog"],' +
+        'div[data-animate-drawer-body="true"],' +
+        'section[data-list-scroll-container]'
+    )
+}
+
+async function closeDrawer() {
+    const drawer = getDrawer()
+    if (!drawer) return
+    const closeBtn = drawer.querySelector(
+        '[aria-label="Cerrar"],' +
+        '[aria-label="Close"],' +
+        'button[aria-label*="errar"],' +
+        'div[role="button"][aria-label*="errar"]'
+    )
+    if (closeBtn) {
+        realClick(closeBtn)
+        await sleep(400)
+    } else {
+        // Press Escape as fallback
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }))
+        await sleep(400)
+    }
+}
+
+// ─── LIST GROUPS ──────────────────────────────────────────────────────────────
+async function listGroups() {
+    try {
+        const pane = getChatListPane()
+        if (!pane) throw new Error('No se encontró la lista de chats. Esperá a que cargue WhatsApp Web.')
+
+        await fullScroll(pane)
+
+        const items = getChatItems(pane)
+        LOG(`Total chat items found: ${items.length}`)
+
+        if (items.length === 0) {
+            throw new Error('No se encontraron chats en la lista. Recargá WhatsApp Web.')
+        }
+
+        const groups = []
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i]
+            if (!isGroupChat(item)) continue
+            const nameEl = item.querySelector('span[title]')
+            const name = nameEl?.getAttribute('title') || nameEl?.textContent?.trim() || 'Sin nombre'
+            groups.push({ index: i, name })
+        }
+
+        LOG(`Groups detected: ${groups.length}`, groups.map(g => g.name))
+
+        if (groups.length === 0) {
+            throw new Error(`No se encontraron grupos. Se revisaron ${items.length} chats. Asegurate de que tenés grupos visibles en tu lista de WhatsApp Web.`)
+        }
+
+        return { success: true, groups }
+    } catch (err) {
+        LOG('listGroups error:', err)
+        return { success: false, error: err.message || String(err), groups: [] }
+    }
+}
+
+// ─── LIST LABELS ──────────────────────────────────────────────────────────────
+async function listLabels() {
+    try {
+        const systemTabs = ['todos', 'all', 'no leídos', 'unread', 'no leidos', 'favoritos', 'favorites', 'grupos', 'groups', 'todo', 'communities', 'comunidades', 'contactos', 'contacts']
+
+        // Try multiple strategies
+        const candidates = new Set()
+
+        // Strategy 1: role="tab"
+        document.querySelectorAll('[role="tab"]').forEach(t => candidates.add(t))
+
+        // Strategy 2: filter test ids
+        document.querySelectorAll('[data-testid^="chat-list-filter"], [data-testid*="filter"]').forEach(t => candidates.add(t))
+
+        // Strategy 3: buttons in the filter area at top of #pane-side
+        const pane = document.querySelector('#pane-side')
+        if (pane) {
+            // Filter buttons are usually in a horizontal scroll container near the top
+            const topArea = pane.querySelector('header, div[role="region"]') || pane
+            topArea.querySelectorAll('button, div[role="button"]').forEach(b => {
+                const text = b.textContent?.trim() || ''
+                if (text && text.length < 50 && text.length > 0) {
+                    candidates.add(b)
+                }
+            })
+        }
+
+        // Strategy 4: Check for "Lists" (new WhatsApp feature) drawer
+        // Lists appear as filter pills at top of chat list
+        document.querySelectorAll('[aria-selected]').forEach(t => candidates.add(t))
+
+        LOG(`Label candidates: ${candidates.size}`)
+
+        const labels = []
+        const seen = new Set()
+        for (const t of candidates) {
+            const name = t.textContent?.trim() || ''
+            const lower = name.toLowerCase()
+            if (!name || name.length > 50) continue
+            if (systemTabs.includes(lower)) continue
+            // Skip numeric-only (counts/badges)
+            if (/^\d+$/.test(name)) continue
+            // Skip duplicates
+            if (seen.has(name)) continue
+            seen.add(name)
+            labels.push({ name })
+        }
+
+        LOG(`Labels detected: ${labels.length}`, labels.map(l => l.name))
+
+        if (labels.length === 0) {
+            return {
+                success: false,
+                error: 'No se encontraron etiquetas o listados. Esto funciona solo en cuentas de WhatsApp Business con etiquetas/listados creados. Abrí la consola (F12) para ver logs de debug.',
+                labels: [],
+            }
+        }
+        return { success: true, labels }
+    } catch (err) {
+        LOG('listLabels error:', err)
+        return { success: false, error: err.message || String(err), labels: [] }
+    }
+}
+
+// ─── EXPORT GROUPS (filtered) ─────────────────────────────────────────────────
+async function exportGroups(selectedNames = null) {
+    const rows = []
+    const seen = new Set()
+    try {
+        const pane = getChatListPane()
+        if (!pane) throw new Error('No se encontró la lista de chats.')
+
+        await fullScroll(pane)
+
+        const items = getChatItems(pane)
+        const targets = []
+        for (let i = 0; i < items.length; i++) {
+            if (!isGroupChat(items[i])) continue
+            const nameEl = items[i].querySelector('span[title]')
+            const name = nameEl?.getAttribute('title') || 'Sin nombre'
+            if (selectedNames && !selectedNames.includes(name)) continue
+            targets.push({ index: i, name })
+        }
+
+        LOG(`Exporting ${targets.length} groups`)
+        if (targets.length === 0) throw new Error('No hay grupos seleccionados para exportar')
+
+        for (const { index, name: groupName } of targets) {
+            const currentItems = getChatItems(pane)
+            const item = currentItems[index]
+            if (!item) continue
+
+            realClick(item)
+            await sleep(800)
+
+            // Open group info
+            const header = document.querySelector('#main header [role="button"], #main header [tabindex="0"]')
+            if (!header) { LOG('header not found'); continue }
+            realClick(header)
+            await sleep(900)
+
+            const drawer = getDrawer()
+            if (!drawer) { LOG('drawer not found'); continue }
+
+            // Scroll participant list
+            const scrollables = drawer.querySelectorAll('[style*="overflow"], [data-tab], [class*="overflow"], section')
+            for (const s of scrollables) {
+                await fullScroll(s, 20, 200)
+            }
+
+            // Extract participants
+            const participantRows = drawer.querySelectorAll('[role="listitem"]')
+            LOG(`Group "${groupName}": ${participantRows.length} participant rows`)
+
+            for (const p of participantRows) {
+                const text = p.innerText || ''
+                const phone = extractPhone(text)
+                if (phone && !seen.has(`${groupName}:${phone}`)) {
+                    seen.add(`${groupName}:${phone}`)
+                    const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+                    const nameLine = lines.find(l => !/^\+?\d/.test(l) && l.length < 50) || ''
+                    rows.push({ phone, name: nameLine, source: `Grupo: ${groupName}` })
+                }
+            }
+            await closeDrawer()
+        }
+        return { success: true, rows }
+    } catch (err) {
+        LOG('exportGroups error:', err)
+        return { success: false, error: err.message || String(err), rows }
+    }
+}
+
+// ─── EXPORT LABELS (filtered) ─────────────────────────────────────────────────
+async function exportLabels(selectedNames = null) {
+    const rows = []
+    const seen = new Set()
+    try {
+        const listResult = await listLabels()
+        if (!listResult.success) throw new Error(listResult.error)
+
+        const targetNames = selectedNames || listResult.labels.map(l => l.name)
+
+        for (const targetName of targetNames) {
+            // Find the tab element fresh each iteration
+            const allClickables = Array.from(document.querySelectorAll('[role="tab"], [data-testid*="filter"], button, div[role="button"], [aria-selected]'))
+            const tab = allClickables.find(t => t.textContent?.trim() === targetName)
+            if (!tab) { LOG(`Tab not found: ${targetName}`); continue }
+
+            realClick(tab)
+            await sleep(1000)
+
+            const pane = getChatListPane()
+            if (!pane) continue
+
+            await fullScroll(pane, 20, 300)
+
+            const items = getChatItems(pane)
+            LOG(`Label "${targetName}": ${items.length} chats`)
+
+            for (let i = 0; i < items.length; i++) {
+                const currentItems = getChatItems(pane)
+                const item = currentItems[i]
+                if (!item) continue
+
+                const nameEl = item.querySelector('span[title]')
+                const name = nameEl?.getAttribute('title') || ''
+
+                realClick(item)
+                await sleep(500)
+
+                const header = document.querySelector('#main header [role="button"], #main header [tabindex="0"]')
+                if (header) {
+                    realClick(header)
+                    await sleep(700)
+                    const drawer = getDrawer()
+                    if (drawer) {
+                        const phone = extractPhone(drawer.innerText)
+                        if (phone && !seen.has(`${targetName}:${phone}`)) {
+                            seen.add(`${targetName}:${phone}`)
+                            rows.push({ phone, name, source: `Etiqueta: ${targetName}` })
+                        }
+                        await closeDrawer()
+                    }
+                }
+            }
+        }
+        return { success: true, rows }
+    } catch (err) {
+        LOG('exportLabels error:', err)
+        return { success: false, error: err.message || String(err), rows }
+    }
 }
 
 // ─── EXPORT ALL CHATS ─────────────────────────────────────────────────────────
 async function exportAllChats() {
     const rows = []
+    const seen = new Set()
     try {
-        // Scroll chat list to load all chats
-        const chatListPane = document.querySelector('[aria-label="Lista de chats"], [aria-label="Chat list"], #pane-side')
-        if (!chatListPane) throw new Error('No se encontró la lista de chats')
+        const pane = getChatListPane()
+        if (!pane) throw new Error('No se encontró la lista de chats.')
 
-        // Scroll to load all chats
-        let lastHeight = 0
-        for (let i = 0; i < 30; i++) {
-            chatListPane.scrollTop = chatListPane.scrollHeight
-            await sleep(400)
-            if (chatListPane.scrollHeight === lastHeight) break
-            lastHeight = chatListPane.scrollHeight
-        }
-        chatListPane.scrollTop = 0
-        await sleep(500)
+        await fullScroll(pane)
 
-        // Get all chat items
-        const chatItems = chatListPane.querySelectorAll('[role="listitem"], [role="row"]')
-        for (const item of chatItems) {
-            const nameEl = item.querySelector('span[title], span[dir="auto"]')
-            const name = nameEl?.getAttribute('title') || nameEl?.textContent?.trim() || ''
-            // Click to open chat
-            item.click()
-            await sleep(500)
-            // Click header to show contact info
-            const header = document.querySelector('header [role="button"][title], header span[dir="auto"]')
-            if (header) {
-                header.click()
-                await sleep(700)
-                // Read phone from drawer
-                const drawer = document.querySelector('[data-testid="drawer-right"], div[role="dialog"]')
-                if (drawer) {
-                    const text = drawer.innerText
-                    const phone = extractPhone(text)
-                    if (phone) {
-                        rows.push({ phone, name, source: 'Chat' })
-                    }
-                    // Close drawer
-                    const closeBtn = drawer.querySelector('[aria-label="Cerrar"], [aria-label="Close"]')
-                    if (closeBtn) await clickAndWait(closeBtn, 300)
-                }
-            }
-        }
-        return { success: true, rows }
-    } catch (err) {
-        return { success: false, error: err.message, rows }
-    }
-}
+        const total = getChatItems(pane).length
+        LOG(`Exporting all: ${total} chats`)
+        if (total === 0) throw new Error('No se encontraron chats en la lista')
 
-// ─── EXPORT GROUPS ────────────────────────────────────────────────────────────
-async function exportGroups() {
-    const rows = []
-    try {
-        // Click "Nueva" or find the groups filter if exists
-        // Alternative: iterate all chats and filter groups
-
-        const chatListPane = document.querySelector('[aria-label="Lista de chats"], [aria-label="Chat list"], #pane-side')
-        if (!chatListPane) throw new Error('No se encontró la lista de chats')
-
-        // Scroll to load all
-        let lastHeight = 0
-        for (let i = 0; i < 30; i++) {
-            chatListPane.scrollTop = chatListPane.scrollHeight
-            await sleep(400)
-            if (chatListPane.scrollHeight === lastHeight) break
-            lastHeight = chatListPane.scrollHeight
-        }
-        chatListPane.scrollTop = 0
-        await sleep(500)
-
-        const chatItems = Array.from(chatListPane.querySelectorAll('[role="listitem"], [role="row"]'))
-
-        for (const item of chatItems) {
-            // Check if it's a group (has group icon or multiple names shown)
-            const isGroup = item.querySelector('[data-icon="default-group"], [data-testid="default-group"]')
-            if (!isGroup) continue
+        for (let i = 0; i < total; i++) {
+            const items = getChatItems(pane)
+            const item = items[i]
+            if (!item) continue
 
             const nameEl = item.querySelector('span[title]')
-            const groupName = nameEl?.getAttribute('title') || 'Sin nombre'
+            const name = nameEl?.getAttribute('title') || nameEl?.textContent?.trim() || ''
 
-            item.click()
-            await sleep(600)
+            realClick(item)
+            await sleep(500)
 
-            // Click group header to open info
-            const header = document.querySelector('header [role="button"], header span[dir="auto"]')
+            const header = document.querySelector('#main header [role="button"], #main header [tabindex="0"]')
             if (header) {
-                header.click()
-                await sleep(800)
-
-                // Find participants list in drawer
-                const drawer = document.querySelector('[data-testid="drawer-right"], div[role="dialog"]')
+                realClick(header)
+                await sleep(700)
+                const drawer = getDrawer()
                 if (drawer) {
-                    // Scroll participants list
-                    const scrollable = drawer.querySelector('[style*="overflow"], [data-tab]')
-                    if (scrollable) {
-                        let lh = 0
-                        for (let i = 0; i < 20; i++) {
-                            scrollable.scrollTop = scrollable.scrollHeight
-                            await sleep(300)
-                            if (scrollable.scrollHeight === lh) break
-                            lh = scrollable.scrollHeight
-                        }
+                    const phone = extractPhone(drawer.innerText)
+                    if (phone && !seen.has(phone)) {
+                        seen.add(phone)
+                        rows.push({ phone, name, source: 'Chat' })
                     }
-                    // Parse participants: each has a phone or name
-                    const items = drawer.querySelectorAll('[role="listitem"], [role="button"]')
-                    for (const p of items) {
-                        const text = p.innerText || ''
-                        const phone = extractPhone(text)
-                        if (phone) {
-                            // First line is usually name or phone
-                            const lines = text.split('\n').filter(Boolean)
-                            const name = lines[0] && !lines[0].includes('+') ? lines[0] : ''
-                            rows.push({ phone, name, source: `Grupo: ${groupName}` })
-                        }
-                    }
-                    // Close drawer
-                    const closeBtn = drawer.querySelector('[aria-label="Cerrar"], [aria-label="Close"]')
-                    if (closeBtn) await clickAndWait(closeBtn, 300)
+                    await closeDrawer()
                 }
             }
         }
         return { success: true, rows }
     } catch (err) {
-        return { success: false, error: err.message, rows }
+        LOG('exportAllChats error:', err)
+        return { success: false, error: err.message || String(err), rows }
     }
 }
 
-// ─── EXPORT BY LABELS ─────────────────────────────────────────────────────────
-async function exportLabels() {
-    const rows = []
-    try {
-        // WhatsApp Business: labels appear as filter tabs at top
-        // Click "Etiquetas" menu or navigate filter tabs
-
-        // Find label filter tabs
-        const filterTabs = document.querySelectorAll('[role="tab"], [data-testid="chat-list-filter"]')
-        const labelTabs = Array.from(filterTabs).filter(t => {
-            const text = t.textContent?.trim().toLowerCase() || ''
-            return text && !['todos', 'all', 'no leídos', 'unread', 'favoritos', 'favorites', 'grupos', 'groups'].includes(text)
-        })
-
-        if (labelTabs.length === 0) {
-            throw new Error('No se encontraron etiquetas. Asegurate de usar WhatsApp Business.')
-        }
-
-        for (const tab of labelTabs) {
-            const labelName = tab.textContent?.trim() || 'Sin nombre'
-            tab.click()
-            await sleep(800)
-
-            const chatListPane = document.querySelector('[aria-label="Lista de chats"], [aria-label="Chat list"], #pane-side')
-            if (!chatListPane) continue
-
-            // Scroll to load all filtered chats
-            let lh = 0
-            for (let i = 0; i < 20; i++) {
-                chatListPane.scrollTop = chatListPane.scrollHeight
-                await sleep(300)
-                if (chatListPane.scrollHeight === lh) break
-                lh = chatListPane.scrollHeight
-            }
-            chatListPane.scrollTop = 0
-            await sleep(400)
-
-            const chatItems = Array.from(chatListPane.querySelectorAll('[role="listitem"], [role="row"]'))
-            for (const item of chatItems) {
-                const nameEl = item.querySelector('span[title]')
-                const name = nameEl?.getAttribute('title') || ''
-                item.click()
-                await sleep(500)
-                const header = document.querySelector('header [role="button"], header span[dir="auto"]')
-                if (header) {
-                    header.click()
-                    await sleep(600)
-                    const drawer = document.querySelector('[data-testid="drawer-right"], div[role="dialog"]')
-                    if (drawer) {
-                        const phone = extractPhone(drawer.innerText)
-                        if (phone) {
-                            rows.push({ phone, name, source: `Etiqueta: ${labelName}` })
-                        }
-                        const closeBtn = drawer.querySelector('[aria-label="Cerrar"], [aria-label="Close"]')
-                        if (closeBtn) await clickAndWait(closeBtn, 300)
-                    }
-                }
-            }
-        }
-        return { success: true, rows }
-    } catch (err) {
-        return { success: false, error: err.message, rows }
+// ─── DEBUG: dump DOM info ─────────────────────────────────────────────────────
+async function debugDump() {
+    const info = {
+        chatListPaneFound: !!getChatListPane(),
+        totalChatItems: 0,
+        sampleItemHTML: '',
+        tabsFound: 0,
+        labelCandidates: [],
     }
+    const pane = getChatListPane()
+    if (pane) {
+        const items = getChatItems(pane)
+        info.totalChatItems = items.length
+        if (items[0]) {
+            info.sampleItemHTML = items[0].outerHTML.slice(0, 500)
+        }
+    }
+    info.tabsFound = document.querySelectorAll('[role="tab"]').length
+    document.querySelectorAll('[role="tab"], [data-testid*="filter"]').forEach(t => {
+        const name = t.textContent?.trim() || ''
+        if (name) info.labelCandidates.push(name)
+    })
+    LOG('DEBUG DUMP:', info)
+    return { success: true, info }
 }
 
 // ─── MESSAGE LISTENER ─────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-    const run = async () => {
-        if (request.command === 'exportGroups') {
-            const result = await exportGroups()
+    ;(async () => {
+        try {
+            let result
+            switch (request?.command) {
+                case 'listGroups':
+                    result = await listGroups()
+                    break
+                case 'listLabels':
+                    result = await listLabels()
+                    break
+                case 'exportGroups':
+                    result = await exportGroups(request.selectedNames)
+                    break
+                case 'exportLabels':
+                    result = await exportLabels(request.selectedNames)
+                    break
+                case 'exportAllChats':
+                    result = await exportAllChats()
+                    break
+                case 'debugDump':
+                    result = await debugDump()
+                    break
+                default:
+                    result = { success: false, error: `Comando desconocido: ${request?.command}` }
+            }
             sendResponse(result)
-        } else if (request.command === 'exportLabels') {
-            const result = await exportLabels()
-            sendResponse(result)
-        } else if (request.command === 'exportAllChats') {
-            const result = await exportAllChats()
-            sendResponse(result)
+        } catch (err) {
+            LOG('Fatal error:', err)
+            sendResponse({ success: false, error: err?.message || String(err) })
         }
-    }
-    run()
-    return true // keep channel open for async response
+    })()
+    return true
 })
 
-console.log('[Nexor Exporter] Content script loaded on web.whatsapp.com')
+LOG('Content script v1.2.0 loaded')
