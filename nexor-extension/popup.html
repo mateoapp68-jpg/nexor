@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Nexor Contacts Extractor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 380px;
+    background: #06060A;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 16px;
+    min-height: 480px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .logo {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #B45309, #D97706, #FFD700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    color: #000;
+  }
+  .title { font-size: 15px; font-weight: 900; letter-spacing: -0.3px; }
+  .subtitle { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+  .back-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: auto;
+    border-radius: 6px;
+  }
+  .back-btn:hover { color: #FFD700; background: rgba(255,255,255,0.05); }
+
+  .status {
+    font-size: 11px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+  .status.ok { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+  .status.err { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+  .status.loading { background: rgba(217,119,6,0.1); color: #FFD700; border: 1px solid rgba(217,119,6,0.2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status.loading .dot { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .big-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: white;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .big-btn:hover:not(:disabled) {
+    border-color: rgba(217,119,6,0.4);
+    background: rgba(217,119,6,0.05);
+    transform: translateY(-1px);
+  }
+  .big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .big-btn-icon {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: rgba(217,119,6,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+  .big-btn-title { display: block; font-size: 13px; font-weight: 800; }
+  .big-btn-desc { display: block; font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; font-weight: 500; }
+
+  .list-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 9px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: white;
+    font-size: 11px;
+    outline: none;
+  }
+  .search-input:focus { border-color: rgba(217,119,6,0.5); }
+  .search-input::placeholder { color: rgba(255,255,255,0.25); }
+
+  .link-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #FFD700;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 7px 10px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  .link-btn:hover { background: rgba(255,215,0,0.1); }
+
+  .items-list {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 12px;
+  }
+  .items-list::-webkit-scrollbar { width: 6px; }
+  .items-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .item:hover { background: rgba(255,255,255,0.04); }
+  .item.selected { background: rgba(217,119,6,0.1); }
+  .checkbox {
+    width: 15px; height: 15px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .item.selected .checkbox { background: #FFD700; border-color: #FFD700; }
+  .checkbox svg { display: none; }
+  .item.selected .checkbox svg { display: block; }
+  .item-body { flex: 1; min-width: 0; }
+  .item-name {
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .item-meta { font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .item-meta .resolved { color: #22c55e; font-weight: 700; }
+
+  .empty { text-align: center; padding: 30px 10px; color: rgba(255,255,255,0.3); font-size: 11px; }
+
+  .options-box {
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .options-title {
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 8px;
+  }
+  .radio-group { display: flex; gap: 6px; }
+  .radio {
+    flex: 1;
+    padding: 9px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    text-align: center;
+    background: transparent;
+  }
+  .radio:hover { color: white; border-color: rgba(255,255,255,0.2); }
+  .radio.active {
+    background: rgba(217,119,6,0.15);
+    border-color: rgba(217,119,6,0.5);
+    color: #FFD700;
+  }
+
+  .primary-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #B45309, #D97706, #FFD700);
+    border: none;
+    color: #000;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 11px;
+    cursor: pointer;
+  }
+  .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(0.3); }
+
+  .log {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: 'Menlo','Consolas',monospace;
+    border: 1px solid rgba(255,255,255,0.05);
+    display: none;
+    line-height: 1.5;
+  }
+  .log.show { display: block; }
+  .log-entry.success { color: #22c55e; }
+  .log-entry.error { color: #ef4444; }
+
+  .footer {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 9px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">N</div>
+    <div>
+      <div class="title">Nexor Contacts Extractor</div>
+      <div class="subtitle">Números reales de WhatsApp Web</div>
+    </div>
+    <button id="backBtn" class="back-btn" style="display:none">← Volver</button>
+  </div>
+
+  <div id="status" class="status loading">
+    <span class="dot"></span>
+    <span id="statusText">Conectando...</span>
+  </div>
+
+  <!-- View: Main menu -->
+  <div id="viewMain" class="view active">
+    <button id="btnGroups" class="big-btn" disabled>
+      <div class="big-btn-icon">👥</div>
+      <div>
+        <span class="big-btn-title">Grupos</span>
+        <span class="big-btn-desc">Elegí cuáles exportar</span>
+      </div>
+    </button>
+
+    <button id="btnLabels" class="big-btn" disabled>
+      <div class="big-btn-icon">🏷️</div>
+      <div>
+        <span class="big-btn-title">Etiquetas</span>
+        <span class="big-btn-desc">Solo WhatsApp Business</span>
+      </div>
+    </button>
+
+    <button id="btnAll" class="big-btn" disabled>
+      <div class="big-btn-icon">💬</div>
+      <div>
+        <span class="big-btn-title">Todos los chats</span>
+        <span class="big-btn-desc">Lista completa de contactos</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- View: Selection -->
+  <div id="viewSelect" class="view">
+    <div class="list-toolbar">
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar..." />
+      <button id="selectAllBtn" class="link-btn">Todos</button>
+    </div>
+    <div id="itemsList" class="items-list"></div>
+
+    <div class="options-box">
+      <div class="options-title">Exportar como</div>
+      <div class="radio-group">
+        <button class="radio active" data-mode="phone">Solo teléfono</button>
+        <button class="radio" data-mode="phone_name">Teléfono + Nombre</button>
+      </div>
+    </div>
+
+    <button id="btnExport" class="primary-btn" disabled>Exportar seleccionados</button>
+  </div>
+
+  <!-- View: All chats options -->
+  <div id="viewAll" class="view">
+    <div class="options-box">
+      <div class="options-title">Exportar como</div>
+      <div class="radio-group">
+        <button class="radio active" data-mode-all="phone">Solo teléfono</button>
+        <button class="radio" data-mode-all="phone_name">Teléfono + Nombre</button>
+      </div>
+    </div>
+    <button id="btnExportAll" class="primary-btn">Exportar todos los chats</button>
+  </div>
+
+  <div id="log" class="log"></div>
+
+  <div class="footer">Nexor CRM · v2.0.0 · Solo números reales</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
