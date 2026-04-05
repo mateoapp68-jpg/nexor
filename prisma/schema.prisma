@@ -892,6 +892,26 @@ model BroadcastLog {
   @@map("broadcast_logs")
 }
 
+// ─── WhatsApp LID to Phone mapping ────────────────────────────────────────────
+// Persistent LID↔Phone mapping to resolve WhatsApp internal IDs to real phones.
+// Captured automatically from Baileys events: messaging-history.set, contacts.upsert,
+// contacts.update, messages.upsert, and on-demand group metadata fetches.
+model WhatsAppLidMap {
+  id        String   @id @default(uuid()) @db.Uuid
+  botId     String   @map("bot_id") @db.Uuid
+  lid       String   // e.g., "12345678901234@lid" or just user part
+  phone     String   // e.g., "591700123456" (digits only)
+  name      String?  // optional contact name if known
+  source    String   @default("unknown") // history, contacts, messages, group, deep-sync
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([botId, lid])
+  @@index([botId])
+  @@index([botId, phone])
+  @@map("whatsapp_lid_map")
+}
+
 // ─── PROMPT TEMPLATES ────────────────────────────────────────────────────────
 
 model PromptTemplate {

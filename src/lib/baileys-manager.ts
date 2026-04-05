@@ -460,6 +460,11 @@ export const BaileysManager = {
         return { status: conn.status, qrBase64: conn.qrBase64, phone: conn.phone }
     },
 
+    // Internal: used by whatsapp-extractor.ts to access sock + labelChats + lidToPhone
+    getConnection(botId: string) {
+        return connections.get(botId) || null
+    },
+
     getLabels(botId: string): WhatsAppLabel[] {
         const conn = connections.get(botId)
         if (!conn) return []
@@ -877,19 +882,27 @@ export const BaileysManager = {
                 }
             })
 
-            // ── LID→Phone mapping collectors ─────────────────────────────
+            // ── LID→Phone mapping collectors (persistent in DB) ─────────
+            // Import lazily to avoid circular deps
+            const { persistLidMapping } = await import('./whatsapp-extractor')
 
             // History sync — contacts with LID + phone
-            sock.ev.on('messaging-history.set', ({ contacts }: any) => {
+            sock.ev.on('messaging-history.set', async ({ contacts }: any) => {
                 if (!contacts?.length) return
                 let mapped = 0
                 for (const c of contacts) {
+                    // c.lid + c.id (where c.id is phone@s.whatsapp.net)
                     if (c.lid && c.id && !c.id.endsWith('@lid')) {
-                        conn.lidToPhone.set(c.lid, c.id.replace('@s.whatsapp.net', '').split(':')[0])
+                        const phone = c.id.replace('@s.whatsapp.net', '').split(':')[0]
+                        conn.lidToPhone.set(c.lid, phone)
+                        await persistLidMapping(botId, c.lid, phone, c.name || c.notify || null, 'history').catch(() => {})
                         mapped++
                     }
+                    // c.lid + c.phoneNumber
                     if (c.lid && c.phoneNumber) {
-                        conn.lidToPhone.set(c.lid, c.phoneNumber.replace(/\D/g, ''))
+                        const phone = c.phoneNumber.replace(/\D/g, '')
+                        conn.lidToPhone.set(c.lid, phone)
+                        await persistLidMapping(botId, c.lid, phone, c.name || c.notify || null, 'history').catch(() => {})
                         mapped++
                     }
                 }
@@ -898,22 +911,29 @@ export const BaileysManager = {
                 }
             })
 
-            // Contacts events
-            sock.ev.on('contacts.upsert', (contacts: any[]) => {
+            // Contacts upsert
+            sock.ev.on('contacts.upsert', async (contacts: any[]) => {
                 for (const c of contacts) {
                     if (c.lid && c.id && !c.id.endsWith('@lid')) {
-                        conn.lidToPhone.set(c.lid, c.id.replace('@s.whatsapp.net', '').split(':')[0])
+                        const phone = c.id.replace('@s.whatsapp.net', '').split(':')[0]
+                        conn.lidToPhone.set(c.lid, phone)
+                        await persistLidMapping(botId, c.lid, phone, c.name || c.notify || null, 'contacts').catch(() => {})
                     }
                     if (c.id?.endsWith('@lid') && c.phoneNumber) {
-                        conn.lidToPhone.set(c.id, c.phoneNumber.replace(/\D/g, ''))
+                        const phone = c.phoneNumber.replace(/\D/g, '')
+                        conn.lidToPhone.set(c.id, phone)
+                        await persistLidMapping(botId, c.id, phone, c.name || c.notify || null, 'contacts').catch(() => {})
                     }
                 }
             })
 
-            sock.ev.on('contacts.update', (contacts: any[]) => {
+            // Contacts update
+            sock.ev.on('contacts.update', async (contacts: any[]) => {
                 for (const c of contacts) {
                     if (c.lid && c.id && !c.id.endsWith('@lid')) {
-                        conn.lidToPhone.set(c.lid, c.id.replace('@s.whatsapp.net', '').split(':')[0])
+                        const phone = c.id.replace('@s.whatsapp.net', '').split(':')[0]
+                        conn.lidToPhone.set(c.lid, phone)
+                        await persistLidMapping(botId, c.lid, phone, c.name || c.notify || null, 'contacts').catch(() => {})
                     }
                 }
             })

@@ -97,7 +97,7 @@ export default function CrmExportPage() {
                 </div>
             </div>
 
-            {/* Nexor Desktop App */}
+            {/* Extractor desde tu bot de WhatsApp */}
             <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/5 via-amber-600/5 to-yellow-500/5 border border-amber-500/20 rounded-2xl p-5 mb-6">
                 <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -105,26 +105,19 @@ export default function CrmExportPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-black text-white">Nexor Desktop</p>
+                            <p className="text-sm font-black text-white">Extraer desde tu bot</p>
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">NUEVO</span>
                         </div>
                         <p className="text-[11px] text-white/50 mb-3 leading-relaxed">
-                            App de escritorio con WhatsApp Web embebido. Extrae <span className="text-amber-400 font-bold">números reales</span> de grupos y etiquetas directamente, sin depender de terceros. Exporta a Excel.
+                            Extrae <span className="text-amber-400 font-bold">grupos, etiquetas y contactos</span> directamente desde tu bot conectado. Solo se exportan contactos con teléfono real verificado. Sin descargas, sin extensiones.
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <a
-                                href="/downloads/Nexor-Desktop-Windows.zip"
-                                download
+                            <Link
+                                href="/dashboard/crm/extract"
                                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider text-black transition-all hover:opacity-90"
                                 style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
                             >
-                                <Package size={12} /> Descargar para Windows
-                            </a>
-                            <Link
-                                href="/dashboard/crm/export/extension-guide"
-                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold text-white/60 hover:text-amber-400 border border-white/10 hover:border-amber-500/40 transition-all"
-                            >
-                                Cómo usar
+                                <Package size={12} /> Abrir extractor
                             </Link>
                         </div>
                     </div>
