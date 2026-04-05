@@ -33,9 +33,12 @@ Extensión de Chrome para exportar contactos de grupos y etiquetas de WhatsApp B
 
 - Solo funciona con **WhatsApp Web abierto** en el navegador
 - Para etiquetas necesitas una cuenta de **WhatsApp Business**
-- El proceso puede tardar unos minutos en cuentas con muchos chats
+- El proceso puede tardar varios minutos en cuentas con muchos chats
 - No cierres la pestaña de WhatsApp Web mientras se ejecuta
-- Esta extensión **solo lee datos**, no envía mensajes ni modifica nada
+- Esta extensión **solo lee datos**, no envía mensajes
+- ⚠️ **Efecto secundario**: Como la extensión abre cada chat para leer el número,
+  los chats quedan marcados como leídos. Si esto es un problema, exportá solo
+  grupos (no requiere abrir chats individuales).
 
 ## Problemas comunes
 

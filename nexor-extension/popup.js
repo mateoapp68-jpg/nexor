@@ -16,97 +16,106 @@ function log(msg, type = '') {
     logEl.scrollTop = logEl.scrollHeight
 }
 
-async function checkWhatsApp() {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.url?.includes('web.whatsapp.com')) {
-        statusText.textContent = 'Abrí web.whatsapp.com primero'
-        return false
-    }
-    statusEl.classList.remove('err')
-    statusEl.classList.add('ok')
-    statusText.textContent = 'Conectado a WhatsApp Web'
-    btnGroups.disabled = false
-    btnLabels.disabled = false
-    btnAll.disabled = false
-    return true
+function setAllDisabled(disabled) {
+    btnGroups.disabled = disabled
+    btnLabels.disabled = disabled
+    btnAll.disabled = disabled
 }
 
-async function sendCommand(command) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.id) return
+async function checkWhatsApp() {
     try {
-        const response = await chrome.tabs.sendMessage(tab.id, { command })
-        return response
-    } catch (err) {
-        log(`Error: ${err.message}`, 'error')
-        log('Recargá web.whatsapp.com y abrí de nuevo el popup', 'error')
-        return null
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+        if (!tab?.url?.includes('web.whatsapp.com')) {
+            statusText.textContent = 'Abrí web.whatsapp.com primero'
+            return false
+        }
+        statusEl.classList.remove('err')
+        statusEl.classList.add('ok')
+        statusText.textContent = 'Conectado a WhatsApp Web'
+        setAllDisabled(false)
+        return true
+    } catch {
+        statusText.textContent = 'Error al verificar pestaña'
+        return false
     }
+}
+
+// Send command with timeout
+async function sendCommand(command, timeoutMs = 10 * 60 * 1000) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id) {
+        return { success: false, error: 'No se encontró la pestaña activa' }
+    }
+
+    const responsePromise = chrome.tabs.sendMessage(tab.id, { command }).catch(err => {
+        return { success: false, error: err?.message || 'Error de comunicación con WhatsApp Web' }
+    })
+
+    const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => resolve({ success: false, error: `Timeout tras ${Math.round(timeoutMs / 1000)}s — recargá WhatsApp Web` }), timeoutMs)
+    })
+
+    return Promise.race([responsePromise, timeoutPromise])
 }
 
 async function downloadExcel(rows, filename) {
-    // Generate CSV (easier than XLSX without libs)
-    const headers = ['Teléfono', 'Nombre', 'Grupo/Etiqueta']
-    const csv = [headers.join(',')]
-    for (const row of rows) {
-        const line = [
-            `"${row.phone || ''}"`,
-            `"${(row.name || '').replace(/"/g, '""')}"`,
-            `"${(row.source || '').replace(/"/g, '""')}"`,
-        ].join(',')
-        csv.push(line)
+    if (!rows || rows.length === 0) {
+        log('No hay contactos para descargar', 'error')
+        return false
     }
-    const bom = '\ufeff' // UTF-8 BOM for Excel
-    const blob = new Blob([bom + csv.join('\n')], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    await chrome.downloads.download({
-        url,
-        filename: `${filename}_${Date.now()}.csv`,
-        saveAs: true,
-    })
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    try {
+        const headers = ['Teléfono', 'Nombre', 'Grupo/Etiqueta']
+        const csv = [headers.join(',')]
+        for (const row of rows) {
+            const line = [
+                `"${(row.phone || '').replace(/"/g, '""')}"`,
+                `"${(row.name || '').replace(/"/g, '""')}"`,
+                `"${(row.source || '').replace(/"/g, '""')}"`,
+            ].join(',')
+            csv.push(line)
+        }
+        const bom = '\ufeff'
+        const blob = new Blob([bom + csv.join('\n')], { type: 'text/csv;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        await chrome.downloads.download({
+            url,
+            filename: `${filename}_${Date.now()}.csv`,
+            saveAs: true,
+        })
+        setTimeout(() => URL.revokeObjectURL(url), 2000)
+        return true
+    } catch (err) {
+        log(`Error al descargar: ${err?.message || err}`, 'error')
+        return false
+    }
 }
 
-btnGroups.addEventListener('click', async () => {
-    btnGroups.disabled = true
-    log('Iniciando exportación de grupos...')
-    const result = await sendCommand('exportGroups')
-    if (result?.success) {
-        log(`${result.rows.length} contactos encontrados`, 'success')
-        await downloadExcel(result.rows, 'nexor_grupos')
-        log('Excel descargado ✓', 'success')
-    } else {
-        log(result?.error || 'Error desconocido', 'error')
+async function runExport(command, filename, label) {
+    setAllDisabled(true)
+    log(`Iniciando ${label}...`)
+    log('⚠️ Puede tardar varios minutos — no cierres esta ventana')
+    try {
+        const result = await sendCommand(command)
+        if (result?.success) {
+            log(`${result.rows.length} contactos encontrados`, 'success')
+            const ok = await downloadExcel(result.rows, filename)
+            if (ok) log('Excel descargado ✓', 'success')
+        } else {
+            log(result?.error || 'Error desconocido', 'error')
+            if (result?.rows?.length > 0) {
+                log(`Se exportarán los ${result.rows.length} contactos encontrados antes del error`)
+                await downloadExcel(result.rows, `${filename}_parcial`)
+            }
+        }
+    } catch (err) {
+        log(`Error inesperado: ${err?.message || err}`, 'error')
+    } finally {
+        setAllDisabled(false)
     }
-    btnGroups.disabled = false
-})
+}
 
-btnLabels.addEventListener('click', async () => {
-    btnLabels.disabled = true
-    log('Iniciando exportación de etiquetas...')
-    const result = await sendCommand('exportLabels')
-    if (result?.success) {
-        log(`${result.rows.length} contactos encontrados`, 'success')
-        await downloadExcel(result.rows, 'nexor_etiquetas')
-        log('Excel descargado ✓', 'success')
-    } else {
-        log(result?.error || 'Error desconocido', 'error')
-    }
-    btnLabels.disabled = false
-})
-
-btnAll.addEventListener('click', async () => {
-    btnAll.disabled = true
-    log('Iniciando exportación de chats...')
-    const result = await sendCommand('exportAllChats')
-    if (result?.success) {
-        log(`${result.rows.length} contactos encontrados`, 'success')
-        await downloadExcel(result.rows, 'nexor_chats')
-        log('Excel descargado ✓', 'success')
-    } else {
-        log(result?.error || 'Error desconocido', 'error')
-    }
-    btnAll.disabled = false
-})
+btnGroups.addEventListener('click', () => runExport('exportGroups', 'nexor_grupos', 'exportación de grupos'))
+btnLabels.addEventListener('click', () => runExport('exportLabels', 'nexor_etiquetas', 'exportación de etiquetas'))
+btnAll.addEventListener('click', () => runExport('exportAllChats', 'nexor_chats', 'exportación de chats'))
 
 checkWhatsApp()

@@ -119,6 +119,7 @@ export default function ExtensionGuidePage() {
                             <li>El proceso puede tardar varios minutos con muchos chats</li>
                             <li>La extensión <b className="text-white">solo lee datos</b>, no envía mensajes</li>
                             <li>Todos los datos quedan en tu navegador, no se envían a ningún servidor</li>
+                            <li><b className="text-amber-400">Efecto secundario:</b> Al exportar chats/etiquetas, los chats quedan marcados como leídos porque la extensión los abre para leer el número. Si esto te afecta, exportá solo grupos.</li>
                         </ul>
                     </div>
                 </div>
