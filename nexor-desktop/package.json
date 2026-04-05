@@ -1,0 +1,43 @@
+{
+  "name": "nexor-desktop",
+  "version": "1.0.0",
+  "description": "Nexor WhatsApp Extractor - Desktop app for exporting WhatsApp contacts to Nexor CRM",
+  "main": "main.js",
+  "author": "Nexor",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.nexor.whatsapp-extractor",
+    "productName": "Nexor WhatsApp Extractor",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "style.css",
+      "app.js",
+      "extractor.js",
+      "icon.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png"
+    }
+  }
+}
