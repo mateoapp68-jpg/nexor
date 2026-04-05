@@ -1,4 +1,4 @@
-// Nexor WhatsApp Exporter — popup script (v1.1.0)
+// Nexor WhatsApp Exporter — popup script (v1.3.0)
 
 const $ = (id) => document.getElementById(id)
 
@@ -26,7 +26,7 @@ const listContent = $('listContent')
 
 // State
 let currentMode = null // 'groups' | 'labels'
-let items = [] // [{ name, selected }]
+let items = [] // [{ id, name, selected, ...extras }]
 let exportMode = 'phone' // 'phone' | 'phone_name'
 
 // ─── Views ─────────────────────────────────────────────────────────────────
@@ -74,9 +74,18 @@ async function checkWhatsApp() {
             statusText.textContent = 'Abrí web.whatsapp.com primero'
             return false
         }
+        // Also ping the inject script to verify Store is ready
+        const ping = await sendCommand({ command: 'ping' }, 8000)
+        if (!ping?.success || !ping?.ready) {
+            statusEl.classList.remove('ok')
+            statusEl.classList.add('err')
+            statusText.textContent = 'Cargando WhatsApp... esperá unos segundos'
+            setTimeout(checkWhatsApp, 3000)
+            return false
+        }
         statusEl.classList.remove('err')
         statusEl.classList.add('ok')
-        statusText.textContent = 'Conectado a WhatsApp Web'
+        statusText.textContent = 'Conectado a WhatsApp Web ✓'
         btnGroups.disabled = false
         btnLabels.disabled = false
         btnAll.disabled = false
@@ -87,15 +96,15 @@ async function checkWhatsApp() {
     }
 }
 
-// ─── Send command with timeout ──────────────────────────────────────────────
-async function sendCommand(payload, timeoutMs = 10 * 60 * 1000) {
+// ─── Send command ──────────────────────────────────────────────────────────
+async function sendCommand(payload, timeoutMs = 5 * 60 * 1000) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab?.id) {
         return { success: false, error: 'No se encontró la pestaña activa' }
     }
 
     const responsePromise = chrome.tabs.sendMessage(tab.id, payload).catch(err => {
-        return { success: false, error: err?.message || 'Error de comunicación con WhatsApp Web' }
+        return { success: false, error: err?.message || 'Error de comunicación' }
     })
 
     const timeoutPromise = new Promise(resolve => {
@@ -160,7 +169,7 @@ async function loadList(mode) {
     btnExport.disabled = true
 
     const command = mode === 'groups' ? 'listGroups' : 'listLabels'
-    const result = await sendCommand({ command }, 60 * 1000)
+    const result = await sendCommand({ command }, 30 * 1000)
 
     loadingList.style.display = 'none'
 
@@ -171,7 +180,12 @@ async function loadList(mode) {
     }
 
     const list = mode === 'groups' ? (result.groups || []) : (result.labels || [])
-    items = list.map(x => ({ name: x.name, selected: false }))
+    items = list.map(x => ({
+        id: x.id,
+        name: x.name,
+        extra: mode === 'groups' ? `${x.participantCount || 0} miembros` : '',
+        selected: false,
+    }))
     renderItems()
     listContent.style.display = 'block'
 }
@@ -195,9 +209,14 @@ function renderItems() {
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
-      <span class="item-name"></span>
+      <div style="flex:1;min-width:0">
+        <div class="item-name"></div>
+        ${item.extra ? `<div style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px" class="item-extra"></div>` : ''}
+      </div>
     `
         div.querySelector('.item-name').textContent = item.name
+        const extra = div.querySelector('.item-extra')
+        if (extra) extra.textContent = item.extra
         div.addEventListener('click', () => {
             items[idx].selected = !items[idx].selected
             renderItems()
@@ -245,19 +264,20 @@ btnAll.addEventListener('click', () => {
 
 // ─── Export selected (groups or labels) ────────────────────────────────────
 btnExport.addEventListener('click', async () => {
-    const selectedNames = items.filter(i => i.selected).map(i => i.name)
-    if (selectedNames.length === 0) return
+    const selected = items.filter(i => i.selected)
+    if (selected.length === 0) return
 
     btnExport.disabled = true
     clearLog()
-    log(`Exportando ${selectedNames.length} ${currentMode === 'groups' ? 'grupo(s)' : 'etiqueta(s)'}...`)
-    log('⚠️ Puede tardar varios minutos — no cierres esta ventana')
+    log(`Exportando ${selected.length} ${currentMode === 'groups' ? 'grupo(s)' : 'etiqueta(s)'}...`)
 
     const command = currentMode === 'groups' ? 'exportGroups' : 'exportLabels'
     const filename = currentMode === 'groups' ? 'nexor_grupos' : 'nexor_etiquetas'
+    const selectedIds = selected.map(s => s.id)
+    const selectedNamesMap = Object.fromEntries(selected.map(s => [s.id, s.name]))
 
     try {
-        const result = await sendCommand({ command, selectedNames })
+        const result = await sendCommand({ command, selectedIds, selectedNamesMap })
         if (result?.success) {
             log(`${result.rows.length} contactos encontrados`, 'success')
             const ok = await downloadCsv(result.rows, filename)
@@ -281,7 +301,6 @@ btnExportAll.addEventListener('click', async () => {
     btnExportAll.disabled = true
     clearLog()
     log('Exportando todos los chats...')
-    log('⚠️ Puede tardar varios minutos — no cierres esta ventana')
 
     try {
         const result = await sendCommand({ command: 'exportAllChats' })
@@ -291,10 +310,6 @@ btnExportAll.addEventListener('click', async () => {
             if (ok) log('Excel descargado ✓', 'success')
         } else {
             log(result?.error || 'Error desconocido', 'error')
-            if (result?.rows?.length > 0) {
-                log(`Guardando ${result.rows.length} contactos parciales`)
-                await downloadCsv(result.rows, 'nexor_chats_parcial')
-            }
         }
     } catch (err) {
         log(`Error: ${err?.message || err}`, 'error')

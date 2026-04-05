@@ -1,11 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Nexor WhatsApp Exporter",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Exporta contactos de grupos y etiquetas de WhatsApp Web a Excel para el CRM de Nexor",
   "permissions": ["downloads"],
   "host_permissions": ["https://web.whatsapp.com/*"],
   "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["inject.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
     {
       "matches": ["https://web.whatsapp.com/*"],
       "js": ["content.js"],
