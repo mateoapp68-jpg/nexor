@@ -71,24 +71,28 @@ async function checkWhatsApp() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
         if (!tab?.url?.includes('web.whatsapp.com')) {
+            statusEl.classList.remove('ok')
+            statusEl.classList.add('err')
             statusText.textContent = 'Abrí web.whatsapp.com primero'
             return false
         }
-        // Also ping the inject script to verify Store is ready
-        const ping = await sendCommand({ command: 'ping' }, 8000)
-        if (!ping?.success || !ping?.ready) {
-            statusEl.classList.remove('ok')
-            statusEl.classList.add('err')
-            statusText.textContent = 'Cargando WhatsApp... esperá unos segundos'
-            setTimeout(checkWhatsApp, 3000)
-            return false
-        }
+        // Enable buttons optimistically — the inject script will wait internally for Store
         statusEl.classList.remove('err')
         statusEl.classList.add('ok')
-        statusText.textContent = 'Conectado a WhatsApp Web ✓'
+        statusText.textContent = 'Conectado a WhatsApp Web'
         btnGroups.disabled = false
         btnLabels.disabled = false
         btnAll.disabled = false
+
+        // Try ping in background to refine status (non-blocking)
+        sendCommand({ command: 'ping' }, 10000).then(ping => {
+            if (ping?.success && ping?.ready) {
+                statusText.textContent = 'WhatsApp Web listo ✓'
+            } else if (ping?.success) {
+                statusText.textContent = 'WhatsApp Web cargando datos...'
+            }
+        }).catch(() => {})
+
         return true
     } catch {
         statusText.textContent = 'Error al verificar pestaña'
