@@ -48,33 +48,26 @@ export async function createSession(userId: string): Promise<WaWebSession> {
 
     const sessionPath = path.join(SESSIONS_DIR, userId)
 
-    // Use system Chromium on Render.com, bundled Chromium locally
-    const puppeteerOptions: any = {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--single-process',
-            '--no-zygote',
-            '--disable-extensions',
-            '--disable-background-networking',
-            '--disable-translate',
-            '--disable-sync',
-            '--metrics-recording-only',
-            '--no-first-run',
-        ],
-    }
-
-    // On Render.com or Linux with system Chromium
-    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-        puppeteerOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
-    }
-
     const client = new Client({
         authStrategy: new LocalAuth({ dataPath: sessionPath }),
-        puppeteer: puppeteerOptions,
+        puppeteer: {
+            headless: true,
+            // Puppeteer downloads its own Chromium — no system install needed
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--single-process',
+                '--no-zygote',
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-translate',
+                '--disable-sync',
+                '--metrics-recording-only',
+                '--no-first-run',
+            ],
+        },
     })
 
     const session: WaWebSession = {
