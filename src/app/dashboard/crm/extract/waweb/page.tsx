@@ -12,7 +12,7 @@ type Tab = 'groups' | 'labels' | 'all'
 type ExportMode = 'phone' | 'phone_name'
 
 interface GroupItem { id: string; name: string; totalMembers: number; selected: boolean }
-interface LabelItem { id: string; name: string; hexColor: string; selected: boolean }
+interface LabelItem { id: string; name: string; hexColor: string; contactCount: number; selected: boolean }
 
 export default function WaWebExtractPage() {
     const [step, setStep] = useState<Step>('qr')
@@ -313,7 +313,7 @@ export default function WaWebExtractPage() {
                                             selected={l.selected}
                                             onClick={() => toggleLabel(l.id)}
                                             name={l.name}
-                                            meta=""
+                                            meta={`${l.contactCount} contacto${l.contactCount !== 1 ? 's' : ''}`}
                                             colorDot={l.hexColor}
                                         />
                                     ))

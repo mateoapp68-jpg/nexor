@@ -190,8 +190,18 @@ export interface ExtractedContact {
     source: string
 }
 
+// ─── Helper: extract real phone from any whatsapp-web.js id ──────────────────
+function extractRealPhone(idObj: any): string | null {
+    if (!idObj) return null
+    // id.user is always the real phone number in whatsapp-web.js
+    const user = idObj.user || idObj._serialized?.split('@')[0] || ''
+    // Must be digits only and 8-15 chars (real phone)
+    if (!user || !/^\d{8,15}$/.test(user)) return null
+    return `+${user}`
+}
+
 /**
- * List all groups the user participates in.
+ * List all groups with member count.
  */
 export async function listGroups(userId: string): Promise<ExtractedGroup[]> {
     const s = getSession(userId)
@@ -199,14 +209,29 @@ export async function listGroups(userId: string): Promise<ExtractedGroup[]> {
 
     try {
         const chats = await s.client.getChats()
-        return chats
-            .filter(c => c.isGroup)
-            .map(c => ({
+        const groups: ExtractedGroup[] = []
+
+        for (const c of chats) {
+            if (!c.isGroup) continue
+            // Try to get participant count from metadata
+            let memberCount = 0
+            try {
+                const groupChat = c as any
+                memberCount = groupChat.participants?.length
+                    || groupChat.groupMetadata?.participants?.length
+                    || 0
+            } catch {}
+
+            groups.push({
                 id: c.id._serialized,
                 name: c.name || 'Sin nombre',
-                totalMembers: (c as any).groupMetadata?.participants?.length || 0,
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name))
+                totalMembers: memberCount,
+            })
+        }
+
+        groups.sort((a, b) => a.name.localeCompare(b.name))
+        console.log(`[WAWEB] listGroups: ${groups.length} groups found`)
+        return groups
     } catch (err) {
         console.error('[WAWEB] listGroups error:', err)
         return []
@@ -229,31 +254,38 @@ export async function getGroupContacts(userId: string, groupIds: string[]): Prom
             if (!chat || !chat.isGroup) continue
 
             const groupName = chat.name || 'Grupo'
-
-            // Get participants
             const groupChat = chat as any
-            let participants = groupChat.participants || groupChat.groupMetadata?.participants || []
 
-            // If empty, try fetching metadata directly
-            if ((!participants || participants.length === 0) && s.client.getContactById) {
+            // Multiple ways to get participants
+            let participants = groupChat.participants || []
+
+            // Fallback 1: groupMetadata
+            if (!participants.length && groupChat.groupMetadata?.participants) {
+                participants = groupChat.groupMetadata.participants
+            }
+
+            // Fallback 2: fetch fresh metadata via getChat
+            if (!participants.length) {
                 try {
-                    const inviteInfo = await (s.client as any).groupMetadata(gid)
-                    if (inviteInfo?.participants) participants = inviteInfo.participants
+                    // Force refresh by getting chat again
+                    const freshChat = await s.client.getChatById(gid) as any
+                    if (freshChat.participants?.length) participants = freshChat.participants
                 } catch {}
             }
 
-            for (const p of participants) {
-                const phoneUser = p.id?.user || p.id?._serialized?.split('@')[0] || ''
-                if (!phoneUser || phoneUser.length < 8) continue
+            console.log(`[WAWEB] Group "${groupName}": ${participants.length} participants`)
 
-                const phone = `+${phoneUser}`
+            for (const p of participants) {
+                const phone = extractRealPhone(p.id)
+                if (!phone) continue
                 if (seen.has(phone)) continue
                 seen.add(phone)
 
-                // Try to get contact name
+                // Get contact name
                 let name = ''
                 try {
-                    const contact = await s.client.getContactById(p.id._serialized || `${phoneUser}@c.us`)
+                    const pId = p.id?._serialized || p.id
+                    const contact = await s.client.getContactById(typeof pId === 'string' ? pId : `${p.id.user}@c.us`)
                     name = contact?.pushname || contact?.name || contact?.verifiedName || ''
                 } catch {}
 
@@ -264,11 +296,12 @@ export async function getGroupContacts(userId: string, groupIds: string[]): Prom
         }
     }
 
+    console.log(`[WAWEB] getGroupContacts: ${contacts.length} total contacts`)
     return contacts
 }
 
 /**
- * List all labels (WhatsApp Business only).
+ * List all labels with REAL contact count per label.
  */
 export async function listLabels(userId: string): Promise<ExtractedLabel[]> {
     const s = getSession(userId)
@@ -276,12 +309,30 @@ export async function listLabels(userId: string): Promise<ExtractedLabel[]> {
 
     try {
         const labels = await s.client.getLabels()
-        return labels.map(l => ({
-            id: l.id,
-            name: l.name || 'Sin nombre',
-            hexColor: l.hexColor || '#64748b',
-            contactCount: 0, // filled on demand
-        }))
+        const result: ExtractedLabel[] = []
+
+        for (const l of labels) {
+            // Count contacts for this label
+            let contactCount = 0
+            try {
+                const labelChats = await s.client.getChatsByLabelId(l.id)
+                // Count only non-group chats with real phone
+                contactCount = labelChats.filter(c => {
+                    if (c.isGroup) return false
+                    return !!extractRealPhone(c.id)
+                }).length
+            } catch {}
+
+            result.push({
+                id: l.id,
+                name: l.name || 'Sin nombre',
+                hexColor: l.hexColor || '#64748b',
+                contactCount,
+            })
+        }
+
+        console.log(`[WAWEB] listLabels: ${result.length} labels, contacts: ${result.map(l => `${l.name}(${l.contactCount})`).join(', ')}`)
+        return result
     } catch (err) {
         console.error('[WAWEB] listLabels error:', err)
         return []
@@ -298,19 +349,23 @@ export async function getLabelContacts(userId: string, labelIds: string[]): Prom
     const contacts: ExtractedContact[] = []
     const seen = new Set<string>()
 
+    // Cache labels for names
+    let allLabels: any[] = []
+    try { allLabels = await s.client.getLabels() } catch {}
+    const labelNameById = new Map(allLabels.map((l: any) => [l.id, l.name || 'Etiqueta']))
+
     for (const labelId of labelIds) {
         try {
             const chats = await s.client.getChatsByLabelId(labelId)
-            const labelObj = (await s.client.getLabels()).find(l => l.id === labelId)
-            const labelName = labelObj?.name || 'Etiqueta'
+            const labelName = labelNameById.get(labelId) || 'Etiqueta'
+
+            console.log(`[WAWEB] Label "${labelName}": ${chats.length} chats`)
 
             for (const chat of chats) {
                 if (chat.isGroup) continue
 
-                const phoneUser = chat.id?.user || chat.id?._serialized?.split('@')[0] || ''
-                if (!phoneUser || phoneUser.length < 8) continue
-
-                const phone = `+${phoneUser}`
+                const phone = extractRealPhone(chat.id)
+                if (!phone) continue
                 if (seen.has(phone)) continue
                 seen.add(phone)
 
@@ -323,10 +378,11 @@ export async function getLabelContacts(userId: string, labelIds: string[]): Prom
                 contacts.push({ phone, name, source: `Etiqueta: ${labelName}` })
             }
         } catch (err) {
-            console.error(`[WAWEB] getLabelContacts error for ${labelId}:`, err)
+            console.error(`[WAWEB] getLabelContacts error for label ${labelId}:`, err)
         }
     }
 
+    console.log(`[WAWEB] getLabelContacts: ${contacts.length} total contacts`)
     return contacts
 }
 
@@ -345,10 +401,8 @@ export async function getAllChats(userId: string): Promise<ExtractedContact[]> {
         for (const chat of chats) {
             if (chat.isGroup) continue
 
-            const phoneUser = chat.id?.user || chat.id?._serialized?.split('@')[0] || ''
-            if (!phoneUser || phoneUser.length < 8) continue
-
-            const phone = `+${phoneUser}`
+            const phone = extractRealPhone(chat.id)
+            if (!phone) continue
             if (seen.has(phone)) continue
             seen.add(phone)
 
@@ -364,5 +418,6 @@ export async function getAllChats(userId: string): Promise<ExtractedContact[]> {
         console.error('[WAWEB] getAllChats error:', err)
     }
 
+    console.log(`[WAWEB] getAllChats: ${contacts.length} contacts`)
     return contacts
 }
