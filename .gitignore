@@ -12,8 +12,10 @@ dist
 dist-ssr
 *.local
 
-# WhatsApp Web.js session data
+# WhatsApp Web.js session + cache data
 waweb-sessions/
+.wwebjs_auth/
+.wwebjs_cache/
 
 # Large binary downloads (hosted externally)
 public/downloads/*.exe
