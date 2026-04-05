@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
     ArrowLeft, Download, Loader2, Bot, Tag, Users,
-    ShoppingCart, MessageSquare, FileSpreadsheet, CheckCircle2, UsersRound
+    ShoppingCart, MessageSquare, FileSpreadsheet, CheckCircle2, UsersRound, Chrome, Package
 } from 'lucide-react'
 
 interface BotOption {
@@ -150,6 +150,40 @@ export default function CrmExportPage() {
                 <div>
                     <h1 className="text-xl font-black uppercase tracking-tighter">Exportar contactos</h1>
                     <p className="text-white/30 text-xs mt-0.5">Descarga Excel con contactos del CRM</p>
+                </div>
+            </div>
+
+            {/* Extensión Chrome */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/5 via-amber-600/5 to-yellow-500/5 border border-amber-500/20 rounded-2xl p-5 mb-6">
+                <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                        <Chrome size={22} className="text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-black text-white">Extensión para Chrome</p>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">NUEVO</span>
+                        </div>
+                        <p className="text-[11px] text-white/50 mb-3 leading-relaxed">
+                            Descarga una extensión para exportar contactos directamente desde WhatsApp Web con los <span className="text-amber-400 font-bold">números reales</span>. Ideal para grupos y etiquetas.
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <a
+                                href="/downloads/nexor-whatsapp-exporter.zip"
+                                download
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider text-white transition-all hover:opacity-90"
+                                style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
+                            >
+                                <Package size={12} /> Descargar (.zip)
+                            </a>
+                            <a
+                                href="/dashboard/crm/export/extension-guide"
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold text-white/60 hover:text-amber-400 border border-white/10 hover:border-amber-500/40 transition-all"
+                            >
+                                Cómo instalar
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 

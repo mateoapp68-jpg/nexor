@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Nexor Exporter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 340px;
+    background: #06060A;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 16px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #B45309, #D97706, #FFD700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+    color: #000;
+  }
+  .title { font-size: 14px; font-weight: 800; letter-spacing: -0.3px; }
+  .subtitle { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+  .status {
+    font-size: 11px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status.ok { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+  .status.err { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .btn:hover:not(:disabled) {
+    border-color: rgba(217, 119, 6, 0.4);
+    background: rgba(217, 119, 6, 0.05);
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: rgba(217, 119, 6, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .btn-text { flex: 1; }
+  .btn-title { display: block; }
+  .btn-desc { display: block; font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 500; margin-top: 1px; }
+
+  .log {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    max-height: 120px;
+    overflow-y: auto;
+    font-family: 'Menlo', monospace;
+    line-height: 1.5;
+    border: 1px solid rgba(255,255,255,0.05);
+    display: none;
+  }
+  .log.show { display: block; }
+  .log-entry { margin-bottom: 3px; }
+  .log-entry.success { color: #22c55e; }
+  .log-entry.error { color: #ef4444; }
+
+  .footer {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 9px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">N</div>
+    <div>
+      <div class="title">Nexor WhatsApp Exporter</div>
+      <div class="subtitle">Exportar contactos a Excel</div>
+    </div>
+  </div>
+
+  <div id="status" class="status err">
+    <span class="dot"></span>
+    <span id="statusText">Verificando...</span>
+  </div>
+
+  <button id="btnGroups" class="btn" disabled>
+    <div class="btn-icon">👥</div>
+    <div class="btn-text">
+      <span class="btn-title">Exportar grupos</span>
+      <span class="btn-desc">Lista todos los grupos y sus miembros</span>
+    </div>
+  </button>
+
+  <button id="btnLabels" class="btn" disabled>
+    <div class="btn-icon">🏷️</div>
+    <div class="btn-text">
+      <span class="btn-title">Exportar etiquetas</span>
+      <span class="btn-desc">Contactos agrupados por etiqueta</span>
+    </div>
+  </button>
+
+  <button id="btnAll" class="btn" disabled>
+    <div class="btn-icon">💬</div>
+    <div class="btn-text">
+      <span class="btn-title">Exportar todos los chats</span>
+      <span class="btn-desc">Todos los contactos del listado</span>
+    </div>
+  </button>
+
+  <div id="log" class="log"></div>
+
+  <div class="footer">Nexor CRM · v1.0.0</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
