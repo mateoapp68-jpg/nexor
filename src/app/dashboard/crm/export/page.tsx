@@ -97,7 +97,7 @@ export default function CrmExportPage() {
                 </div>
             </div>
 
-            {/* Nexor Extractor — Bookmarklet */}
+            {/* Extraer de WhatsApp — whatsapp-web.js */}
             <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-amber-600/10 to-yellow-500/10 border-2 border-amber-500/30 rounded-2xl p-5 mb-6">
                 <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
@@ -105,19 +105,19 @@ export default function CrmExportPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-black text-white">Nexor Extractor</p>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-black">SIN INSTALAR</span>
+                            <p className="text-sm font-black text-white">Extraer de WhatsApp</p>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-black">NÚMEROS REALES</span>
                         </div>
                         <p className="text-[11px] text-white/60 mb-3 leading-relaxed">
-                            Arrastrá un botón a tu barra de marcadores. Con WhatsApp Web abierto, hacés click y extrae <span className="text-amber-400 font-bold">números reales</span> de grupos y etiquetas. Cero instalación.
+                            Escaneá un QR y extraé <span className="text-amber-400 font-bold">grupos, etiquetas y contactos</span> con números reales garantizados. Sin descargar nada, sin extensiones, todo desde Nexor.
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
                             <Link
-                                href="/dashboard/crm/extract/bookmarklet"
+                                href="/dashboard/crm/extract/waweb"
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-black transition-all hover:opacity-90"
                                 style={{ background: 'linear-gradient(135deg, #B45309, #D97706, #FFD700)' }}
                             >
-                                <Package size={12} /> Obtener Nexor Extractor
+                                <Package size={12} /> Extraer contactos
                             </Link>
                         </div>
                     </div>
