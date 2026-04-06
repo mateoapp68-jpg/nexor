@@ -31,7 +31,7 @@ const sessions: Map<string, WaWebSession> =
     global.__waweb_sessions ?? (global.__waweb_sessions = new Map())
 
 const SESSIONS_DIR = path.join(process.cwd(), 'waweb-sessions')
-const AUTO_DESTROY_MS = 10 * 60 * 1000 // 10 min idle → destroy
+const AUTO_DESTROY_MS = 5 * 60 * 1000 // 5 min idle → destroy (save RAM)
 
 // ─── Session management ───────────────────────────────────────────────────────
 
@@ -49,30 +49,70 @@ export async function createSession(userId: string): Promise<WaWebSession> {
 
     const sessionPath = path.join(SESSIONS_DIR, userId)
 
-    // Detect if running in serverless/container (Render, Vercel, Lambda)
+    // ── Determine browser strategy ──
+    const remoteWs = process.env.BROWSER_WS_ENDPOINT
     const isProduction = process.env.NODE_ENV === 'production' || !!process.env.RENDER
-    let executablePath: string | undefined
 
-    if (isProduction) {
+    let puppeteerConfig: any = {}
+
+    if (remoteWs) {
+        // Strategy 1: Remote browser (zero local RAM)
+        console.log(`[WAWEB] Using remote browser: ${remoteWs}`)
+        puppeteerConfig = { browserWSEndpoint: remoteWs }
+    } else if (isProduction) {
+        // Strategy 2: Local Chrome with aggressive memory optimization
+        let executablePath: string | undefined
         try {
             executablePath = await chromium.executablePath()
             console.log(`[WAWEB] Using @sparticuz/chromium: ${executablePath}`)
-        } catch (err) {
+        } catch {
             console.log('[WAWEB] @sparticuz/chromium not available, using default Puppeteer')
+        }
+
+        puppeteerConfig = {
+            headless: chromium.headless as any,
+            executablePath,
+            pipe: true, // Use pipe instead of WebSocket (saves ~10MB)
+            args: [
+                ...chromium.args,
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-sync',
+                '--disable-translate',
+                '--disable-features=TranslateUI,IsolateOrigins,site-per-process',
+                '--disable-site-isolation-trials',
+                '--disable-background-timer-throttling',
+                '--disable-renderer-backgrounding',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--disable-domain-reliability',
+                '--disable-hang-monitor',
+                '--js-flags=--max-old-space-size=128',
+                '--renderer-process-limit=1',
+                '--single-process',
+                '--mute-audio',
+                '--metrics-recording-only',
+                '--no-first-run',
+            ],
+        }
+    } else {
+        // Strategy 3: Dev mode (local)
+        puppeteerConfig = {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         }
     }
 
     const client = new Client({
         authStrategy: new LocalAuth({ dataPath: sessionPath }),
-        puppeteer: {
-            headless: isProduction ? (chromium.headless as any) : true,
-            executablePath,
-            args: isProduction ? chromium.args : [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-            ],
+        webVersionCache: {
+            type: 'local',
+            path: path.join(process.cwd(), '.wwebjs_cache'),
+            strict: false,
         },
+        puppeteer: puppeteerConfig,
     })
 
     const session: WaWebSession = {
