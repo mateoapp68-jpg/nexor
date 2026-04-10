@@ -14,10 +14,6 @@ export async function POST(req: Request) {
         const file = formData.get('file') as File | null
         if (!file) return NextResponse.json({ error: 'No se recibió archivo' }, { status: 400 })
 
-        // Validate file size (max 100 MB)
-        if (file.size > 100 * 1024 * 1024) {
-            return NextResponse.json({ error: 'El archivo no puede superar los 100 MB' }, { status: 400 })
-        }
         // Validate MIME type server-side
         if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
             return NextResponse.json({ error: 'Solo se permiten imágenes y videos' }, { status: 400 })
