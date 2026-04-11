@@ -37,8 +37,10 @@ export default function CrmCampaignDetailPage() {
     // WhatsApp QR state
     const [waStatus, setWaStatus] = useState<{ status: string; qrBase64?: string; phone?: string }>({ status: 'disconnected' })
     const [waConnecting, setWaConnecting] = useState(false)
+    const [availableBots, setAvailableBots] = useState<{ id: string; name: string; baileysPhone: string | null }[]>([])
+    const [assigningBot, setAssigningBot] = useState(false)
 
-    useEffect(() => { fetchCampaign(); fetchWaStatus() }, [id])
+    useEffect(() => { fetchCampaign(); fetchWaStatus(); fetchAvailableBots() }, [id])
 
     useEffect(() => {
         if (campaign?.status !== 'RUNNING') return
@@ -52,6 +54,36 @@ export default function CrmCampaignDetailPage() {
         const interval = setInterval(fetchWaStatus, 2000)
         return () => clearInterval(interval)
     }, [waStatus.status])
+
+    async function fetchAvailableBots() {
+        try {
+            const res = await fetch('/api/bots')
+            if (res.ok) {
+                const data = await res.json()
+                const baileysBots = (data.bots ?? []).filter((b: any) => b.type === 'BAILEYS')
+                setAvailableBots(baileysBots.map((b: any) => ({ id: b.id, name: b.name, baileysPhone: b.baileysPhone ?? null })))
+            }
+        } catch {}
+    }
+
+    async function assignBot(botId: string) {
+        setAssigningBot(true)
+        try {
+            const res = await fetch(`/api/crm/campaigns/${id}/connect`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ botId }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setWaStatus({ status: data.status, phone: data.phone, qrBase64: data.qrBase64 })
+            }
+        } catch {
+            setError('Error al asignar bot')
+        } finally {
+            setAssigningBot(false)
+        }
+    }
 
     async function fetchWaStatus() {
         try {
@@ -268,11 +300,43 @@ export default function CrmCampaignDetailPage() {
                                 <p className="text-xs text-amber-400">Generando QR...</p>
                             </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
                                     <WifiOff size={14} className="text-white/30 shrink-0" />
                                     <p className="text-xs text-white/40">Sin conectar</p>
                                 </div>
+
+                                {/* Bots existentes */}
+                                {availableBots.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <p className="text-[10px] text-white/30 uppercase font-black tracking-widest">Usar bot existente</p>
+                                        {availableBots.map(bot => (
+                                            <button
+                                                key={bot.id}
+                                                type="button"
+                                                onClick={() => assignBot(bot.id)}
+                                                disabled={assigningBot}
+                                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-50 text-left"
+                                            >
+                                                <Smartphone size={12} className={bot.baileysPhone ? 'text-green-400' : 'text-white/30'} />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold text-white/80 truncate">{bot.name}</p>
+                                                    {bot.baileysPhone
+                                                        ? <p className="text-[10px] text-green-400">📱 +{bot.baileysPhone}</p>
+                                                        : <p className="text-[10px] text-white/30">Sin conectar</p>
+                                                    }
+                                                </div>
+                                                {assigningBot ? <Loader2 size={11} className="animate-spin text-white/40 shrink-0" /> : <span className="text-[10px] text-white/40 shrink-0">Usar</span>}
+                                            </button>
+                                        ))}
+                                        <div className="flex items-center gap-2 my-1">
+                                            <div className="flex-1 h-px bg-white/10" />
+                                            <span className="text-[10px] text-white/20 uppercase">o</span>
+                                            <div className="flex-1 h-px bg-white/10" />
+                                        </div>
+                                    </div>
+                                )}
+
                                 <button
                                     type="button"
                                     onClick={connectWhatsApp}
@@ -281,7 +345,7 @@ export default function CrmCampaignDetailPage() {
                                     style={{ background: 'linear-gradient(135deg, #065f46, #059669)' }}
                                 >
                                     {waConnecting ? <Loader2 size={12} className="animate-spin" /> : <Smartphone size={12} />}
-                                    Conectar WhatsApp
+                                    Conectar nuevo QR
                                 </button>
                             </div>
                         )}
