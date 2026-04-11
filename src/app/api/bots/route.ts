@@ -20,7 +20,7 @@ export async function GET() {
     if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const bots = await prisma.bot.findMany({
-      where: { userId: auth.userId },
+      where: { userId: auth.userId, NOT: { name: { startsWith: '__crm__' } } },
       include: {
         secret: {
           select: { whatsappInstanceNumber: true, reportPhone: true },
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     if (limits.bots !== Infinity) {
       const effectiveLimit = limits.bots + extraBots
-      const botCount = await prisma.bot.count({ where: { userId: auth.userId } })
+      const botCount = await prisma.bot.count({ where: { userId: auth.userId, NOT: { name: { startsWith: '__crm__' } } } })
       if (botCount >= effectiveLimit) {
         return NextResponse.json({
           error: `Tu ${PLAN_NAMES[plan]} permite hasta ${effectiveLimit} bot(s). Contacta al administrador para obtener más.`,

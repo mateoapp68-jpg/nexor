@@ -92,13 +92,10 @@ export async function executeBroadcast(campaignId: string) {
         return
     }
 
-    // Get bot name for reconnect
-    const bot = await prisma.bot.findUnique({ where: { id: campaign.botId }, select: { name: true } })
-
     // Auto-reconnect si hay sesión en disco pero no en memoria
     const currentStatus = BaileysManager.getStatus(campaign.botId)
-    if (currentStatus.status !== 'connected' && bot) {
-        await BaileysManager.connect(campaign.botId, bot.name, openaiKey, '')
+    if (currentStatus.status !== 'connected') {
+        await BaileysManager.connect(campaign.botId, campaign.name, openaiKey, '')
         // Esperar hasta 20s para conectar
         for (let i = 0; i < 20; i++) {
             await new Promise(r => setTimeout(r, 1000))

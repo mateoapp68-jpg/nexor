@@ -28,7 +28,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
     const campaign = await (prisma as any).broadcastCampaign.findFirst({
         where: { id: params.id, userId: user.id },
-        include: { bot: { select: { id: true, name: true } } },
+        select: { botId: true, name: true },
     })
     if (!campaign) return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
 
@@ -42,8 +42,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         openaiKey = (await getGlobalOpenAIKey()) ?? ''
     }
 
-    // Iniciar conexión en background
-    BaileysManager.connect(campaign.botId, campaign.bot.name, openaiKey, '').catch(
+    // Iniciar conexión en background usando nombre de la campaña
+    BaileysManager.connect(campaign.botId, campaign.name, openaiKey, '').catch(
         err => console.error('[CRM CONNECT]', err)
     )
 
