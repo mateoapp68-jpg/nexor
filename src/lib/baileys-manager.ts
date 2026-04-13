@@ -776,9 +776,22 @@ export const BaileysManager = {
         if (!conn?.sock || conn.status !== 'connected') return false
         const jid = `${toPhone.replace(/^\+/, '').replace(/\s/g, '')}@s.whatsapp.net`
         try {
+            // Detectar mimetype desde la URL para que WhatsApp lo reproduzca correctamente
+            const ext = audioUrl.split('?')[0].split('.').pop()?.toLowerCase() || ''
+            const mimeMap: Record<string, string> = {
+                ogg: 'audio/ogg; codecs=opus',
+                oga: 'audio/ogg; codecs=opus',
+                mp3: 'audio/mpeg',
+                wav: 'audio/wav',
+                aac: 'audio/aac',
+                m4a: 'audio/mp4',
+                mp4: 'audio/mp4',
+                webm: 'audio/webm',
+            }
+            const mimetype = mimeMap[ext] || 'audio/ogg; codecs=opus'
             await conn.sock.sendMessage(jid, {
                 audio: { url: audioUrl },
-                mimetype: 'audio/ogg; codecs=opus',
+                mimetype,
                 ptt: true,
             })
             return true

@@ -496,7 +496,7 @@ export default function CrmCampaignDetailPage() {
                                                 <div key={audio.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                                                     <Mic size={14} className="text-green-400 shrink-0" />
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-xs text-white/60 truncate">{audio.url.split('/').pop()}</p>
+                                                        <p className="text-xs text-white/60 truncate">{audio.url.split('?')[0].split('/').pop()}</p>
                                                     </div>
                                                     <span className="text-[10px] text-white/30 shrink-0">#{i + 1}</span>
                                                 </div>

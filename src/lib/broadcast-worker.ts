@@ -86,7 +86,14 @@ export async function executeBroadcast(campaignId: string) {
     if (!openaiKey) {
         openaiKey = (await getGlobalOpenAIKey()) ?? ''
     }
-    if (!openaiKey) {
+    const allMedia: any[] = campaign.images || []
+    const audioFiles = allMedia.filter((m: any) => m.type === 'AUDIO')
+    const visualMedia = allMedia.filter((m: any) => m.type !== 'AUDIO')
+    const hasAudio = audioFiles.length > 0
+    const hasVisual = visualMedia.length > 0
+
+    // Solo requerir OpenAI key si la campaña necesita generar texto (sin audios)
+    if (!openaiKey && !hasAudio) {
         await (prisma as any).broadcastCampaign.update({ where: { id: campaignId }, data: { status: 'FAILED' } })
         console.error(`[BROADCAST] No hay OpenAI API Key para campaña ${campaignId}`)
         return
@@ -111,12 +118,6 @@ export async function executeBroadcast(campaignId: string) {
         console.error(`[BROADCAST] Bot ${campaign.botId} no conectado. Campaña ${campaignId} marcada como FAILED.`)
         return
     }
-
-    const allMedia: any[] = campaign.images || []
-    const audioFiles = allMedia.filter((m: any) => m.type === 'AUDIO')
-    const visualMedia = allMedia.filter((m: any) => m.type !== 'AUDIO')
-    const hasAudio = audioFiles.length > 0
-    const hasVisual = visualMedia.length > 0
     let mediaIndex: number = campaign.imageIndex || 0
     const delayBetween = delayMs(campaign.delayValue, campaign.delayUnit)
 
