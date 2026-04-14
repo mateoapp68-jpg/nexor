@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft, Play, Pause, Users, CheckCircle2, XCircle,
     Clock, Loader2, AlertCircle, RefreshCw,
     Image as ImageIcon, Calendar, Smartphone, Wifi, WifiOff, Film, Mic,
-    Plus, Pencil, Trash2, Phone, X
+    Plus, Pencil, Trash2, Phone, X, Square
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -34,6 +34,7 @@ export default function CrmCampaignDetailPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [actionLoading, setActionLoading] = useState(false)
+    const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
     // WhatsApp QR state
     const [waStatus, setWaStatus] = useState<{ status: string; qrBase64?: string; phone?: string }>({ status: 'disconnected' })
@@ -54,6 +55,14 @@ export default function CrmCampaignDetailPage() {
     const [editName, setEditName] = useState('')
     const [savingContact, setSavingContact] = useState(false)
     const [deletingContactId, setDeletingContactId] = useState<string | null>(null)
+
+    // Audio recording
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+    const audioChunksRef = useRef<Blob[]>([])
+    const [isRecording, setIsRecording] = useState(false)
+    const [recordingSeconds, setRecordingSeconds] = useState(0)
+    const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const [uploadingAudio, setUploadingAudio] = useState(false)
 
     useEffect(() => { fetchCampaign(); fetchWaStatus(); fetchAvailableBots() }, [id])
 
@@ -93,6 +102,10 @@ export default function CrmCampaignDetailPage() {
                 const data = await res.json()
                 setWaStatus({ status: data.status, phone: data.phone, qrBase64: data.qrBase64 })
                 setActiveBotId(botId)
+                if (data.status === 'connected') {
+                    setSuccessMsg(`✅ WhatsApp conectado${data.phone ? ` (+${data.phone})` : ''}`)
+                    setTimeout(() => setSuccessMsg(null), 4000)
+                }
                 // Cargar estado del bot recién asignado
                 const botRes = await fetch(`/api/bots/${botId}`)
                 if (botRes.ok) {
@@ -167,6 +180,62 @@ export default function CrmCampaignDetailPage() {
         }
     }
 
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+                    ? 'audio/ogg;codecs=opus'
+                    : 'audio/webm'
+            const recorder = new MediaRecorder(stream, { mimeType })
+            audioChunksRef.current = []
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+            recorder.onstop = async () => {
+                stream.getTracks().forEach(t => t.stop())
+                const blob = new Blob(audioChunksRef.current, { type: mimeType })
+                await uploadRecordedAudio(blob, mimeType)
+            }
+            recorder.start(100)
+            mediaRecorderRef.current = recorder
+            setIsRecording(true)
+            setRecordingSeconds(0)
+            recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+        } catch {
+            setError('No se pudo acceder al micrófono')
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop()
+        }
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+        setIsRecording(false)
+        setRecordingSeconds(0)
+    }
+
+    async function uploadRecordedAudio(blob: Blob, mimeType: string) {
+        setUploadingAudio(true)
+        try {
+            const ext = mimeType.includes('ogg') ? 'ogg' : 'webm'
+            const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: mimeType })
+            const formData = new FormData()
+            formData.append('file', file)
+            const res = await fetch(`/api/crm/campaigns/${id}/images`, { method: 'POST', body: formData })
+            if (!res.ok) {
+                const data = await res.json()
+                setError(data.error || 'Error al subir audio')
+            } else {
+                fetchCampaign()
+            }
+        } catch {
+            setError('Error al subir audio grabado')
+        } finally {
+            setUploadingAudio(false)
+        }
+    }
+
     async function addContact() {
         if (!newPhone.trim()) return
         setAddingContact(true)
@@ -224,7 +293,11 @@ export default function CrmCampaignDetailPage() {
             const res = await fetch(`/api/crm/campaigns/${id}/execute`, { method: 'POST' })
             const data = await res.json()
             if (!res.ok) { setError(data.error); return }
-            fetchCampaign()
+            // Optimistically set RUNNING so the pause button appears immediately.
+            // NOT calling fetchCampaign() here — if the DB hasn't updated yet it would
+            // overwrite the optimistic state back to DRAFT. The polling useEffect
+            // (setInterval every 4s) kicks in automatically once status is RUNNING.
+            setCampaign((prev: any) => prev ? { ...prev, status: 'RUNNING' } : prev)
         } finally { setActionLoading(false) }
     }
 
@@ -276,6 +349,13 @@ export default function CrmCampaignDetailPage() {
                     <RefreshCw size={14} />
                 </button>
             </div>
+
+            {successMsg && (
+                <div className="mb-5 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex gap-3 text-green-400 text-sm">
+                    <CheckCircle2 size={16} className="shrink-0" />
+                    <p>{successMsg}</p>
+                </div>
+            )}
 
             {error && (
                 <div className="mb-5 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-3 text-red-400 text-sm">
@@ -649,14 +729,63 @@ export default function CrmCampaignDetailPage() {
                                                 </div>
                                             ))}
                                         </div>
+                                        {/* Grabar nuevo audio */}
+                                        {!['RUNNING', 'COMPLETED'].includes(campaign.status) && (
+                                            <div className="mt-3">
+                                                {isRecording ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={stopRecording}
+                                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
+                                                    >
+                                                        <Square size={12} /> Detener ({recordingSeconds}s)
+                                                    </button>
+                                                ) : uploadingAudio ? (
+                                                    <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
+                                                        <Loader2 size={12} className="animate-spin" /> Subiendo audio...
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={startRecording}
+                                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
+                                                    >
+                                                        <Mic size={12} /> Grabar nuevo audio
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 {visualFiles.length === 0 && audioFiles.length === 0 && (
                                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-2 flex items-center gap-2">
+                                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
                                             <ImageIcon size={12} /> Multimedia
                                         </p>
-                                        <p className="text-xs text-white/30">Sin archivos</p>
+                                        <p className="text-xs text-white/30 mb-3">Sin archivos</p>
+                                        {!['RUNNING', 'COMPLETED'].includes(campaign.status) && (
+                                            isRecording ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={stopRecording}
+                                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
+                                                >
+                                                    <Square size={12} /> Detener ({recordingSeconds}s)
+                                                </button>
+                                            ) : uploadingAudio ? (
+                                                <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
+                                                    <Loader2 size={12} className="animate-spin" /> Subiendo audio...
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={startRecording}
+                                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
+                                                >
+                                                    <Mic size={12} /> Grabar nota de voz
+                                                </button>
+                                            )
+                                        )}
                                     </div>
                                 )}
                             </>

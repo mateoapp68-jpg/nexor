@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { executeBroadcast, startBroadcastScheduler } from '@/lib/broadcast-worker'
 
 startBroadcastScheduler()
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: { id: string } }) {
     const user = await getAuthUser()
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         return NextResponse.json({ error: 'No se puede iniciar esta campaña' }, { status: 400 })
     }
     if (campaign._count.contacts === 0) return NextResponse.json({ error: 'Carga contactos antes de ejecutar' }, { status: 400 })
-    if (campaign.images.length === 0) return NextResponse.json({ error: 'Agrega al menos 1 imagen antes de ejecutar' }, { status: 400 })
+    // Media is optional — text-only campaigns (AI-generated text, no media) are valid
 
     // If FAILED, reset status to allow re-execution
     if (campaign.status === 'FAILED') {

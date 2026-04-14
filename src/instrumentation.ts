@@ -35,6 +35,10 @@ export async function register() {
                 const { prisma } = await import('@/lib/prisma')
                 const { BaileysManager } = await import('@/lib/baileys-manager')
                 const { decrypt } = await import('@/lib/crypto')
+                const { getGlobalOpenAIKey } = await import('@/lib/ai-credits')
+
+                // Pre-cargar la key global una sola vez para todos los bots que no tengan key propia
+                const globalKey = await getGlobalOpenAIKey()
 
                 const bots = await prisma.bot.findMany({
                     where: {
@@ -47,8 +51,20 @@ export async function register() {
 
                 for (const bot of bots) {
                     if (!bot.secret) continue
-                    const openaiKey = decrypt(bot.secret.openaiApiKeyEnc)
-                    if (!openaiKey) continue
+
+                    // Key propia del bot — fallback a key global
+                    let openaiKey = ''
+                    if (bot.secret.openaiApiKeyEnc) {
+                        try { openaiKey = decrypt(bot.secret.openaiApiKeyEnc) } catch {}
+                    }
+                    if (!openaiKey && globalKey) openaiKey = globalKey
+
+                    // Si no hay ninguna key disponible, saltar (pero no bloquear otros bots)
+                    if (!openaiKey) {
+                        console.warn(`[STARTUP] Bot ${bot.name} sin key de OpenAI — saltando reconexión`)
+                        continue
+                    }
+
                     console.log(`[STARTUP] Reconectando bot Baileys: ${bot.name}`)
                     BaileysManager.connect(bot.id, bot.name, openaiKey, bot.secret.reportPhone ?? '')
                         .catch(err => console.error(`[STARTUP] Error reconectando bot ${bot.id}:`, err))

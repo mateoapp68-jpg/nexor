@@ -14,9 +14,10 @@
 
 import { prisma } from './prisma'
 import { decrypt } from './crypto'
-import { transcribeAudio, analyzeImage, chat, ChatMessage } from './openai'
+import { transcribeAudio, analyzeImage, chatWithUsage, ChatMessage, BotJsonResponse } from './openai'
 import { markAsRead, sendText, sendImage, sendVideo } from './ycloud'
 import { createNotification } from './notifications'
+import { resolveOpenAIKey, logAiUsage } from './ai-credits'
 
 /** Tiempo de espera del buffer en milisegundos (15 segundos). */
 const BUFFER_DELAY_MS = 15_000
@@ -676,11 +677,12 @@ export class BotEngine {
       return
     }
     const apiKey = decrypt(bot.secret.ycloudApiKeyEnc)
-    const openaiKey = bot.secret.openaiApiKeyEnc ? decrypt(bot.secret.openaiApiKeyEnc) : ''
-    if (!openaiKey) {
-      console.warn(`[BOT] Bot ${bot.id} sin API key de OpenAI configurada`)
+    const resolvedKey = await resolveOpenAIKey(botId)
+    if (!resolvedKey) {
+      console.warn(`[BOT] Bot ${botId} sin API key de OpenAI (sin key propia ni saldo global)`)
       return
     }
+    const openaiKey = resolvedKey.key
     const from = bot.secret.whatsappInstanceNumber
     const reportPhone = bot.secret.reportPhone
 
@@ -901,9 +903,14 @@ export class BotEngine {
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let response: Awaited<ReturnType<typeof chat>>
+    let response: BotJsonResponse
     try {
-      response = await chat(systemPrompt, chatHistory, openaiKey, (bot as any).aiModel || 'gpt-4o')
+      const aiModel = (bot as any).aiModel || 'gpt-4o'
+      const aiResult = await chatWithUsage(systemPrompt, chatHistory, openaiKey, aiModel)
+      response = aiResult.response
+      if (resolvedKey.isGlobal) {
+        logAiUsage({ userId: resolvedKey.userId, service: 'bot-engine', model: aiModel, promptTokens: aiResult.promptTokens, completionTokens: aiResult.completionTokens }).catch(() => {})
+      }
     } catch (aiErr: any) {
       console.error(`[BOT] OpenAI error para ${userPhone}:`, aiErr.message)
       const isQuotaError = aiErr.message?.includes('insufficient_quota') || aiErr.message?.includes('429')

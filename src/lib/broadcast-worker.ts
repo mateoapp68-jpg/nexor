@@ -6,11 +6,17 @@
 import { prisma } from '@/lib/prisma'
 import { BaileysManager } from '@/lib/baileys-manager'
 import { decrypt } from '@/lib/crypto'
-import { getGlobalOpenAIKey } from '@/lib/ai-credits'
+import { getGlobalOpenAIKey, logAiUsage } from '@/lib/ai-credits'
 
 const OPENAI_BASE = 'https://api.openai.com/v1'
 
-async function generateUniqueMessage(prompt: string, _unused: string, apiKey: string): Promise<string> {
+interface GenerateResult {
+    message: string
+    promptTokens: number
+    completionTokens: number
+}
+
+async function generateUniqueMessage(prompt: string, apiKey: string): Promise<GenerateResult> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)
     try {
@@ -49,7 +55,11 @@ Genera solo el mensaje, sin comillas, sin explicaciones.`,
             throw new Error(`OpenAI error: ${errData?.error?.message || res.status}`)
         }
         const data = await res.json()
-        return data.choices?.[0]?.message?.content?.trim() || prompt
+        return {
+            message: data.choices?.[0]?.message?.content?.trim() || prompt,
+            promptTokens: data.usage?.prompt_tokens ?? 0,
+            completionTokens: data.usage?.completion_tokens ?? 0,
+        }
     } finally {
         clearTimeout(timeout)
     }
@@ -77,14 +87,19 @@ export async function executeBroadcast(campaignId: string) {
         data: { status: 'RUNNING', startedAt: new Date() },
     })
 
-    // OpenAI key: config del usuario → key global del admin
+    // OpenAI key: config del usuario → key global del admin (solo si tiene saldo)
     let openaiKey = ''
+    let isGlobalKey = false
     const oaiConfig = await (prisma as any).openAIConfig.findUnique({ where: { userId: campaign.userId } })
     if (oaiConfig?.isValid && oaiConfig.apiKeyEnc) {
         try { openaiKey = decrypt(oaiConfig.apiKeyEnc) } catch {}
     }
     if (!openaiKey) {
-        openaiKey = (await getGlobalOpenAIKey()) ?? ''
+        const user = await (prisma as any).user.findUnique({ where: { id: campaign.userId }, select: { aiCreditsUsd: true } })
+        if (user?.aiCreditsUsd > 0) {
+            openaiKey = (await getGlobalOpenAIKey()) ?? ''
+            if (openaiKey) isGlobalKey = true
+        }
     }
     const allMedia: any[] = campaign.images || []
     const audioFiles = allMedia.filter((m: any) => m.type === 'AUDIO')
@@ -129,6 +144,13 @@ export async function executeBroadcast(campaignId: string) {
         })
         if (fresh?.status === 'PAUSED' || fresh?.status === 'FAILED') break
 
+        // Verificar que el contacto aún existe en DB (puede haber sido eliminado mientras corría)
+        const stillExists = await (prisma as any).broadcastContact.findUnique({
+            where: { id: contact.id },
+            select: { id: true, status: true },
+        })
+        if (!stillExists || stillExists.status !== 'PENDING') continue
+
         try {
             // Send via Baileys
             const conn = BaileysManager.getStatus(campaign.botId)
@@ -166,8 +188,11 @@ export async function executeBroadcast(campaignId: string) {
                 logMessage = '🎙️ Audio'
             } else {
                 // Modo texto: generar mensaje de IA, enviar visual opcional + texto
-                const message = await generateUniqueMessage(campaign.prompt, '', openaiKey)
-                logMessage = message
+                const generated = await generateUniqueMessage(campaign.prompt, openaiKey)
+                logMessage = generated.message
+                if (isGlobalKey) {
+                    logAiUsage({ userId: campaign.userId, service: 'broadcast', model: 'gpt-4o', promptTokens: generated.promptTokens, completionTokens: generated.completionTokens }).catch(() => {})
+                }
 
                 if (hasVisual) {
                     const visual = visualMedia[mediaIndex % visualMedia.length]
@@ -180,7 +205,7 @@ export async function executeBroadcast(campaignId: string) {
                     await new Promise(r => setTimeout(r, 1500))
                 }
 
-                sent = await BaileysManager.sendText(campaign.botId, contact.phone, message)
+                sent = await BaileysManager.sendText(campaign.botId, contact.phone, generated.message)
                 if (!sent) throw new Error('sendText retornó false')
             }
 

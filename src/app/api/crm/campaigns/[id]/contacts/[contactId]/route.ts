@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { phone, name } = await req.json()
     if (!phone?.trim()) return NextResponse.json({ error: 'Teléfono requerido' }, { status: 400 })
 
-    let normalized = phone.trim().replace(/\s+/g, '')
+    let normalized = phone.trim().replace(/[\s\-\(\)\.]/g, '')
     if (/^[67]\d{7}$/.test(normalized)) normalized = '+591' + normalized
     if (!/^\+/.test(normalized)) normalized = '+' + normalized
 

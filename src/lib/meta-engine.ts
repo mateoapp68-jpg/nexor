@@ -10,10 +10,11 @@
 
 import { prisma } from './prisma'
 import { decrypt } from './crypto'
-import { transcribeAudio, analyzeImage, chat, ChatMessage } from './openai'
+import { transcribeAudio, analyzeImage, chatWithUsage, ChatMessage, BotJsonResponse } from './openai'
 import { sendMetaText, sendMetaImage, sendMetaVideo, markMetaAsRead } from './meta'
 import { buildSystemPrompt, detectIdentifiedProduct, enforceCharLimits, extractSentUrls } from './bot-engine'
 import { createNotification } from './notifications'
+import { resolveOpenAIKey, logAiUsage } from './ai-credits'
 
 const BUFFER_DELAY_MS = 15_000
 const MAX_HISTORY_MESSAGES = 6
@@ -89,11 +90,12 @@ export class MetaBotEngine {
       console.warn(`[META] Bot ${botId} sin Page Access Token configurado`)
       return
     }
-    const openaiKey  = bot.secret.openaiApiKeyEnc ? decrypt(bot.secret.openaiApiKeyEnc) : ''
-    if (!openaiKey) {
-      console.warn(`[META] Bot ${botId} sin API key de OpenAI configurada`)
+    const resolvedKey = await resolveOpenAIKey(botId)
+    if (!resolvedKey) {
+      console.warn(`[META] Bot ${botId} sin API key de OpenAI (sin key propia ni saldo global)`)
       return
     }
+    const openaiKey = resolvedKey.key
 
     // 2. Normalize event
     const norm = normalizeMetaEvent(event)
@@ -288,9 +290,14 @@ export class MetaBotEngine {
 
     // 14. Call OpenAI
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let response: Awaited<ReturnType<typeof chat>>
+    let response: BotJsonResponse
     try {
-      response = await chat(systemPrompt, chatHistory, openaiKey, (bot as any).aiModel || 'gpt-4o')
+      const aiModel = (bot as any).aiModel || 'gpt-4o'
+      const aiResult = await chatWithUsage(systemPrompt, chatHistory, openaiKey, aiModel)
+      response = aiResult.response
+      if (resolvedKey.isGlobal) {
+        logAiUsage({ userId: resolvedKey.userId, service: 'meta-engine', model: aiModel, promptTokens: aiResult.promptTokens, completionTokens: aiResult.completionTokens }).catch(() => {})
+      }
     } catch (aiErr: any) {
       console.error(`[META] OpenAI error para ${senderId}:`, aiErr.message)
       const isQuotaError = aiErr.message?.includes('insufficient_quota') || aiErr.message?.includes('429')

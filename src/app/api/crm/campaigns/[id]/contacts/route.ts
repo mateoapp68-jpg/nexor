@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             if (campaign.status === 'RUNNING' || campaign.status === 'COMPLETED') {
                 return NextResponse.json({ error: 'No se pueden agregar contactos mientras la campaña está en ejecución o completada' }, { status: 400 })
             }
-            let phone = String(body.phone).trim().replace(/\s+/g, '')
+            let phone = String(body.phone).trim().replace(/[\s\-\(\)\.]/g, '')
             if (/^[67]\d{7}$/.test(phone)) phone = '+591' + phone
             if (!/^\+/.test(phone)) phone = '+' + phone
             if (!/^\+\d{8,15}$/.test(phone)) {

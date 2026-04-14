@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { decrypt } from '@/lib/crypto'
 import { BaileysManager } from '@/lib/baileys-manager'
+import { getGlobalOpenAIKey, getUserCredits } from '@/lib/ai-credits'
 
 function getAuth() {
     const token = cookies().get('auth_token')?.value
@@ -27,8 +28,23 @@ export async function POST(
     if (!bot) return NextResponse.json({ error: 'Bot no encontrado' }, { status: 404 })
     if (!bot.secret) return NextResponse.json({ error: 'Configura las credenciales primero' }, { status: 400 })
 
-    const openaiKey = decrypt(bot.secret.openaiApiKeyEnc)
-    if (!openaiKey) return NextResponse.json({ error: 'OpenAI API Key no configurada' }, { status: 400 })
+    // Intentar key propia primero
+    let openaiKey = ''
+    if (bot.secret.openaiApiKeyEnc) {
+        try { openaiKey = decrypt(bot.secret.openaiApiKeyEnc) } catch {}
+    }
+
+    // Fallback: key global si el usuario tiene saldo
+    if (!openaiKey) {
+        const credits = await getUserCredits(auth.userId)
+        if (credits > 0) {
+            openaiKey = (await getGlobalOpenAIKey()) ?? ''
+        }
+    }
+
+    if (!openaiKey) {
+        return NextResponse.json({ error: 'Configura tu OpenAI API Key o recarga créditos AI para usar el asistente' }, { status: 400 })
+    }
 
     // Iniciar conexión en background (no esperar)
     BaileysManager.connect(

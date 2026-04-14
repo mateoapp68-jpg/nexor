@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/ads/encryption'
+import { getUserCredits, getGlobalOpenAIKey, logAiUsage } from '@/lib/ai-credits'
 
 const ENC_KEY = process.env.ADS_ENCRYPTION_KEY || ''
 
@@ -32,12 +33,21 @@ export async function POST(req: Request) {
         const { action, content, networks, topic, language = 'es' } = await req.json()
 
         const oaiConfig = await (prisma as any).openAIConfig.findUnique({ where: { userId: user.id } })
-        if (!oaiConfig?.isValid || !oaiConfig.apiKeyEnc) {
-            return NextResponse.json({ error: 'Configura tu API Key de OpenAI en Configuración → IA' }, { status: 400 })
+        let apiKey = ''
+        let isGlobalKey = false
+        const model = oaiConfig?.model || 'gpt-4o'
+
+        if (oaiConfig?.isValid && oaiConfig.apiKeyEnc) {
+            try { apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY) } catch {}
         }
 
-        const apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY)
-        const model = oaiConfig.model || 'gpt-4o'
+        if (!apiKey) {
+            const credits = await getUserCredits(user.id)
+            if (credits <= 0) return NextResponse.json({ error: 'Sin saldo de créditos AI. Recarga en tu perfil.' }, { status: 400 })
+            apiKey = (await getGlobalOpenAIKey()) ?? ''
+            if (!apiKey) return NextResponse.json({ error: 'Configura tu API Key de OpenAI en Configuración → IA' }, { status: 400 })
+            isGlobalKey = true
+        }
 
         const networkList = (networks || []).join(', ') || 'redes sociales'
 
@@ -67,6 +77,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Acción no válida' }, { status: 400 })
         }
 
+        if (isGlobalKey) logAiUsage({ userId: user.id, service: 'social-ai', model, promptTokens: 800, completionTokens: 600 }).catch(() => {})
         return NextResponse.json({ result })
     } catch (err: any) {
         console.error('[SocialAI]', err)

@@ -16,8 +16,8 @@ import { Boom } from '@hapi/boom'
 import path from 'path'
 import fs from 'fs'
 import { prisma } from '@/lib/prisma'
-import { chat } from '@/lib/openai'
-import { decrypt } from '@/lib/crypto'
+import { chatWithUsage, BotJsonResponse } from '@/lib/openai'
+import { resolveOpenAIKey, logAiUsage } from '@/lib/ai-credits'
 import { toDataURL } from 'qrcode'
 import { processFollowUps } from './follow-up-worker'
 import { buildSystemPrompt, detectIdentifiedProduct, enforceCharLimits, extractSentUrls } from './bot-engine'
@@ -129,12 +129,12 @@ async function handleMessage(
     }
 
     // Leer credenciales frescas de BD en cada mensaje (nunca desde memoria)
-    const freshSecret = await prisma.botSecret.findUnique({ where: { botId: conn.botId } })
-    if (!freshSecret?.openaiApiKeyEnc) {
-        console.warn(`[BAILEYS] Bot ${conn.botId} sin API key de OpenAI`)
+    const resolvedKey = await resolveOpenAIKey(conn.botId)
+    if (!resolvedKey) {
+        console.warn(`[BAILEYS] Bot ${conn.botId} sin API key de OpenAI (sin key propia ni saldo global)`)
         return
     }
-    const openaiKey = decrypt(freshSecret.openaiApiKeyEnc)
+    const openaiKey = resolvedKey.key
 
     const userPhone = jid.replace('@s.whatsapp.net', '')
     let userName = msg.pushName || ''
@@ -330,9 +330,14 @@ async function handleMessage(
         welcomeSent,
     )
 
-    let response: Awaited<ReturnType<typeof chat>>
+    let response: BotJsonResponse
     try {
-        response = await chat(systemPrompt, chatHistory, openaiKey, (bot as any).aiModel || 'gpt-4o')
+        const aiModel = (bot as any).aiModel || 'gpt-4o'
+        const aiResult = await chatWithUsage(systemPrompt, chatHistory, openaiKey, aiModel)
+        response = aiResult.response
+        if (resolvedKey.isGlobal) {
+            logAiUsage({ userId: resolvedKey.userId, service: 'baileys', model: aiModel, promptTokens: aiResult.promptTokens, completionTokens: aiResult.completionTokens }).catch(() => {})
+        }
     } catch (aiErr: any) {
         console.error(`[BAILEYS] OpenAI error para ${userPhone}:`, aiErr.message)
         const isQuotaError = aiErr.message?.includes('insufficient_quota') || aiErr.message?.includes('429')
@@ -735,7 +740,7 @@ export const BaileysManager = {
     async sendText(botId: string, toPhone: string, text: string): Promise<boolean> {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
-        const jid = `${toPhone.replace(/^\+/, '').replace(/\s/g, '')}@s.whatsapp.net`
+        const jid = `${toPhone.replace(/^\+/, '').replace(/[\s\-\(\)\.]/g, '')}@s.whatsapp.net`
         try {
             await conn.sock.sendMessage(jid, { text })
             return true
@@ -748,7 +753,7 @@ export const BaileysManager = {
     async sendImage(botId: string, toPhone: string, imageUrl: string): Promise<boolean> {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
-        const jid = `${toPhone.replace(/^\+/, '').replace(/\s/g, '')}@s.whatsapp.net`
+        const jid = `${toPhone.replace(/^\+/, '').replace(/[\s\-\(\)\.]/g, '')}@s.whatsapp.net`
         try {
             await conn.sock.sendMessage(jid, { image: { url: imageUrl } })
             return true
@@ -761,7 +766,7 @@ export const BaileysManager = {
     async sendVideo(botId: string, toPhone: string, videoUrl: string): Promise<boolean> {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
-        const jid = `${toPhone.replace(/^\+/, '').replace(/\s/g, '')}@s.whatsapp.net`
+        const jid = `${toPhone.replace(/^\+/, '').replace(/[\s\-\(\)\.]/g, '')}@s.whatsapp.net`
         try {
             await conn.sock.sendMessage(jid, { video: { url: videoUrl } })
             return true
@@ -774,7 +779,7 @@ export const BaileysManager = {
     async sendAudio(botId: string, toPhone: string, audioUrl: string): Promise<boolean> {
         const conn = connections.get(botId)
         if (!conn?.sock || conn.status !== 'connected') return false
-        const jid = `${toPhone.replace(/^\+/, '').replace(/\s/g, '')}@s.whatsapp.net`
+        const jid = `${toPhone.replace(/^\+/, '').replace(/[\s\-\(\)\.]/g, '')}@s.whatsapp.net`
         try {
             // Detectar mimetype desde la URL para que WhatsApp lo reproduzca correctamente
             const ext = audioUrl.split('?')[0].split('.').pop()?.toLowerCase() || ''

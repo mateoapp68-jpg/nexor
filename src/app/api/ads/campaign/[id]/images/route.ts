@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/ads/encryption'
 import { generateAdImage, editAdImageWithReference, type ImageQuality, type ImageSize } from '@/lib/ads/openai-ads'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getUserCredits, getGlobalOpenAIKey, logAiUsage } from '@/lib/ai-credits'
 
 const ENC_KEY = process.env.ADS_ENCRYPTION_KEY || ''
 const BUCKET = 'ad-creatives'
@@ -24,10 +25,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const oaiConfig = await (prisma as any).openAIConfig.findUnique({ where: { userId: user.id } })
-    if (!oaiConfig?.isValid) {
-        return NextResponse.json({ error: 'Configura tu OpenAI API Key primero' }, { status: 400 })
+    let apiKey = ''
+    let isGlobalKey = false
+
+    if (oaiConfig?.isValid && oaiConfig.apiKeyEnc) {
+        try { apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY) } catch {}
     }
-    const apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY)
+
+    if (!apiKey) {
+        const credits = await getUserCredits(user.id)
+        if (credits <= 0) return NextResponse.json({ error: 'Sin saldo de créditos AI. Recarga en tu perfil.' }, { status: 400 })
+        apiKey = (await getGlobalOpenAIKey()) ?? ''
+        if (!apiKey) return NextResponse.json({ error: 'Configura tu OpenAI API Key primero' }, { status: 400 })
+        isGlobalKey = true
+    }
 
     const campaign = await (prisma as any).adCampaignV2.findFirst({
         where: { id: params.id, userId: user.id },
@@ -135,6 +146,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             savedCreativeId = created.id
         }
 
+        if (isGlobalKey) logAiUsage({ userId: user.id, service: 'ads-image', model: 'gpt-image-1', promptTokens: 500, completionTokens: 0 }).catch(() => {})
         return NextResponse.json({ imageUrl, creativeId: savedCreativeId })
     } catch (err: any) {
         console.error('[GenerateImage]', err)

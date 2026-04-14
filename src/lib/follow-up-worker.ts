@@ -1,8 +1,9 @@
 import { prisma } from './prisma'
-import { chat, FOLLOWUP_MODEL } from './openai'
+import { chatWithUsage, FOLLOWUP_MODEL } from './openai'
 import { sendText } from './ycloud'
 import { decrypt } from './crypto'
 import { BaileysManager } from './baileys-manager'
+import { resolveOpenAIKey, logAiUsage } from './ai-credits'
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
@@ -71,11 +72,12 @@ async function executeFollowUp(conv: any, type: 1 | 2) {
     console.log(`[WORKER] Ejecutando seguimiento ${type} para ${userPhone} (${userName})`)
 
     try {
-        if (!bot.secret) {
-            console.warn(`[WORKER] Bot ${bot.id} sin credenciales, omitiendo seguimiento`)
+        const resolvedKey = await resolveOpenAIKey(bot.id)
+        if (!resolvedKey) {
+            console.warn(`[WORKER] Bot ${bot.id} sin API key de OpenAI (sin key propia ni saldo global), omitiendo seguimiento`)
             return
         }
-        const openaiKey = decrypt(bot.secret.openaiApiKeyEnc)
+        const openaiKey = resolvedKey.key
         // ✅ FIX 1: Decodificar JSON de los mensajes del asistente antes de pasar al prompt
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const history = messages.reverse().map((m: any) => {
@@ -119,7 +121,11 @@ IMPORTANTE: Responde únicamente en formato JSON con este schema exacto:
   "mensaje1": "mensaje aquí"
 }`
 
-        const aiResponse = await chat(prompt, [], openaiKey, FOLLOWUP_MODEL)
+        const aiResult = await chatWithUsage(prompt, [], openaiKey, FOLLOWUP_MODEL)
+        const aiResponse = aiResult.response
+        if (resolvedKey.isGlobal) {
+            logAiUsage({ userId: resolvedKey.userId, service: 'follow-up', model: FOLLOWUP_MODEL, promptTokens: aiResult.promptTokens, completionTokens: aiResult.completionTokens }).catch(() => {})
+        }
         const messageText = aiResponse.mensaje1 || "¿Hola? ¿Sigues ahí? Queríamos saber si tienes alguna duda con tu pedido."
 
         // Enviar según el tipo de bot

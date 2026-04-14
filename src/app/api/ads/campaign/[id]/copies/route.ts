@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/ads/encryption'
 import { generateAdCopies } from '@/lib/ads/openai-ads'
+import { getUserCredits, getGlobalOpenAIKey, logAiUsage } from '@/lib/ai-credits'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
     const ENC_KEY = process.env.ADS_ENCRYPTION_KEY
@@ -13,15 +14,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const oaiConfig = await (prisma as any).openAIConfig.findUnique({ where: { userId: user.id } })
-    if (!oaiConfig?.isValid || !oaiConfig?.apiKeyEnc) {
-        return NextResponse.json({ error: 'Configura tu OpenAI API Key en Configuración → IA primero' }, { status: 400 })
+    let apiKey = ''
+    let isGlobalKey = false
+    const model = oaiConfig?.model || 'gpt-5.1'
+
+    if (oaiConfig?.isValid && oaiConfig.apiKeyEnc) {
+        try { apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY!) } catch {}
     }
 
-    let apiKey: string
-    try {
-        apiKey = decrypt(oaiConfig.apiKeyEnc, ENC_KEY!)
-    } catch {
-        return NextResponse.json({ error: 'Error al leer tu API key de OpenAI. Reconecta tu cuenta en Configuración → IA.' }, { status: 500 })
+    if (!apiKey) {
+        const credits = await getUserCredits(user.id)
+        if (credits <= 0) return NextResponse.json({ error: 'Sin saldo de créditos AI. Recarga en tu perfil.' }, { status: 400 })
+        apiKey = (await getGlobalOpenAIKey()) ?? ''
+        if (!apiKey) return NextResponse.json({ error: 'Configura tu OpenAI API Key en Configuración → IA primero' }, { status: 400 })
+        isGlobalKey = true
     }
 
     const campaign = await (prisma as any).adCampaignV2.findFirst({
@@ -60,8 +66,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             mediaType: campaign.strategy.mediaType,
             count: campaign.strategy.mediaCount,
             apiKey,
-            model: oaiConfig.model
+            model,
         })
+        if (isGlobalKey) logAiUsage({ userId: user.id, service: 'ads-copies', model, promptTokens: 2000, completionTokens: 1200 }).catch(() => {})
 
         // Upsert by slotIndex: update existing records (preserving uploaded mediaUrl/mediaType)
         // or create new ones if slot doesn't exist yet. This avoids duplicate records.
