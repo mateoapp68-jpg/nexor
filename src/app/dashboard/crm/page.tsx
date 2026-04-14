@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
-    Plus, Play, Pause, Trash2, Eye, Users, CheckCircle2,
-    XCircle, Clock, Loader2, MessageSquare, Image as ImageIcon, AlertCircle,
-    Download
+    Plus, Play, Pause, Trash2, Eye,
+    Loader2, MessageSquare, AlertCircle,
+    Download, Wifi
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -129,9 +129,15 @@ export default function CrmPage() {
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                     <p className="font-black text-white truncate">{c.name}</p>
-                                    <p className="text-xs text-white/30 mt-0.5 truncate">{c.bot?.name}</p>
+                                    {c.bot?.baileysPhone ? (
+                                        <p className="flex items-center gap-1 text-[11px] text-green-400 mt-0.5 font-bold">
+                                            <Wifi size={10} /> WA conectado · +{c.bot.baileysPhone}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-white/25 mt-0.5">Sin WhatsApp conectado</p>
+                                    )}
                                 </div>
-                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${STATUS_COLORS[c.status]}`}>
+                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg shrink-0 ${STATUS_COLORS[c.status]}`}>
                                     {STATUS_LABELS[c.status]}
                                 </span>
                             </div>
