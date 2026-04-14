@@ -249,6 +249,7 @@ export async function chatWithUsage(
       mensaje3: typeof parsed.mensaje3 === 'string' ? parsed.mensaje3 : '',
       fotos_mensaje1: normalizeFotos(parsed.fotos_mensaje1),
       videos_mensaje1: normalizeFotos(parsed.videos_mensaje1),
+      audio_url: typeof parsed.audio_url === 'string' ? parsed.audio_url : '',
       reporte: typeof parsed.reporte === 'string' ? parsed.reporte : '',
     },
     promptTokens: totalPrompt,

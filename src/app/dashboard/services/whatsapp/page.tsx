@@ -78,6 +78,7 @@ interface Product {
   currency: string
   welcomeMessage: string | null
   firstMessage: string | null
+  firstMessageAudioUrl: string | null
   hooks: string[]
   imageMainUrls: string[]
   imagePriceUnitUrl: string | null
@@ -1244,8 +1245,9 @@ function ProductForm({
   const [showTestimonialPhotos, setShowTestimonialPhotos] = useState(false)
   const [showTestimonialVideos, setShowTestimonialVideos] = useState(false)
 
-  // Audio PTT state
+  // Audio PTT state — sincronizar con el producto cuando cambia
   const [audioUrl, setAudioUrl] = useState<string | null>(product?.firstMessageAudioUrl ?? null)
+  useEffect(() => { setAudioUrl(product?.firstMessageAudioUrl ?? null) }, [product?.id])
   const [isRecordingAudio, setIsRecordingAudio] = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [uploadingAudio, setUploadingAudio] = useState(false)
