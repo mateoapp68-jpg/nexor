@@ -425,9 +425,9 @@ export default function CrmCampaignDetailPage() {
                                     <button
                                         type="button"
                                         onClick={() => { setShowAddContact(v => !v); setNewPhone(''); setNewName('') }}
-                                        className="flex items-center gap-1 text-[11px] font-bold text-amber-400/70 hover:text-amber-400 transition-all"
+                                        className="flex items-center gap-1.5 text-[11px] font-black text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-2.5 py-1 hover:bg-amber-400/20 transition-all"
                                     >
-                                        <Plus size={12} /> Agregar
+                                        <Plus size={11} /> Agregar contacto
                                     </button>
                                 )}
                             </div>
@@ -467,7 +467,18 @@ export default function CrmCampaignDetailPage() {
 
                         <div className="max-h-80 overflow-y-auto">
                             {campaign.contacts?.length === 0 ? (
-                                <p className="text-center text-white/30 text-sm py-8">Sin contactos cargados</p>
+                                <div className="py-8 text-center">
+                                    <p className="text-white/30 text-sm mb-3">Sin contactos cargados</p>
+                                    {!['RUNNING', 'COMPLETED'].includes(campaign.status) && !showAddContact && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowAddContact(true); setNewPhone(''); setNewName('') }}
+                                            className="inline-flex items-center gap-2 text-xs font-black text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-xl px-4 py-2 hover:bg-amber-400/20 transition-all"
+                                        >
+                                            <Plus size={12} /> Agregar primer contacto
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
                                 campaign.contacts?.map((c: any) => (
                                     <div key={c.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0 group">
@@ -686,8 +697,10 @@ export default function CrmCampaignDetailPage() {
                     {(() => {
                         const visualFiles = campaign.images?.filter((img: any) => img.type !== 'AUDIO') ?? []
                         const audioFiles = campaign.images?.filter((img: any) => img.type === 'AUDIO') ?? []
+                        const canEdit = !['RUNNING', 'COMPLETED'].includes(campaign.status)
                         return (
                             <>
+                                {/* Imágenes / videos */}
                                 {visualFiles.length > 0 && (
                                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
                                         <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
@@ -713,12 +726,14 @@ export default function CrmCampaignDetailPage() {
                                         </div>
                                     </div>
                                 )}
-                                {audioFiles.length > 0 && (
-                                    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
-                                            <Mic size={12} /> Audios — nota de voz ({audioFiles.length})
-                                        </p>
-                                        <div className="space-y-2">
+
+                                {/* Audios — siempre visible para poder grabar */}
+                                <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
+                                    <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
+                                        <Mic size={12} /> Audios — nota de voz {audioFiles.length > 0 && `(${audioFiles.length})`}
+                                    </p>
+                                    {audioFiles.length > 0 && (
+                                        <div className="space-y-2 mb-3">
                                             {audioFiles.map((audio: any, i: number) => (
                                                 <div key={audio.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                                                     <Mic size={14} className="text-green-400 shrink-0" />
@@ -729,65 +744,34 @@ export default function CrmCampaignDetailPage() {
                                                 </div>
                                             ))}
                                         </div>
-                                        {/* Grabar nuevo audio */}
-                                        {!['RUNNING', 'COMPLETED'].includes(campaign.status) && (
-                                            <div className="mt-3">
-                                                {isRecording ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={stopRecording}
-                                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
-                                                    >
-                                                        <Square size={12} /> Detener ({recordingSeconds}s)
-                                                    </button>
-                                                ) : uploadingAudio ? (
-                                                    <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
-                                                        <Loader2 size={12} className="animate-spin" /> Subiendo audio...
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        onClick={startRecording}
-                                                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
-                                                    >
-                                                        <Mic size={12} /> Grabar nuevo audio
-                                                    </button>
-                                                )}
+                                    )}
+                                    {canEdit && (
+                                        isRecording ? (
+                                            <button
+                                                type="button"
+                                                onClick={stopRecording}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
+                                            >
+                                                <Square size={12} /> Detener grabación ({recordingSeconds}s)
+                                            </button>
+                                        ) : uploadingAudio ? (
+                                            <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
+                                                <Loader2 size={12} className="animate-spin" /> Subiendo audio...
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                                {visualFiles.length === 0 && audioFiles.length === 0 && (
-                                    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
-                                            <ImageIcon size={12} /> Multimedia
-                                        </p>
-                                        <p className="text-xs text-white/30 mb-3">Sin archivos</p>
-                                        {!['RUNNING', 'COMPLETED'].includes(campaign.status) && (
-                                            isRecording ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={stopRecording}
-                                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
-                                                >
-                                                    <Square size={12} /> Detener ({recordingSeconds}s)
-                                                </button>
-                                            ) : uploadingAudio ? (
-                                                <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
-                                                    <Loader2 size={12} className="animate-spin" /> Subiendo audio...
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={startRecording}
-                                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
-                                                >
-                                                    <Mic size={12} /> Grabar nota de voz
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-                                )}
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={startRecording}
+                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
+                                            >
+                                                <Mic size={12} /> {audioFiles.length > 0 ? 'Grabar otro audio' : 'Grabar nota de voz'}
+                                            </button>
+                                        )
+                                    )}
+                                    {!canEdit && audioFiles.length === 0 && (
+                                        <p className="text-xs text-white/25">Sin audios cargados</p>
+                                    )}
+                                </div>
                             </>
                         )
                     })()}
