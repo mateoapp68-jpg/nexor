@@ -29,22 +29,33 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         where: { id: params.id, userId: user.id },
     })
     if (!campaign) return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
-    if (!['DRAFT', 'SCHEDULED'].includes(campaign.status)) {
-        return NextResponse.json({ error: 'Solo se puede editar campañas en borrador o programadas' }, { status: 400 })
+    if (campaign.status === 'RUNNING') {
+        return NextResponse.json({ error: 'No se puede editar una campaña mientras está enviando' }, { status: 400 })
     }
 
     const body = await req.json()
     const { name, prompt, delayValue, delayUnit, scheduledAt } = body
 
+    // Validar delayValue
+    const parsedDelay = parseInt(delayValue)
+    if (delayValue !== undefined && (isNaN(parsedDelay) || parsedDelay < 1)) {
+        return NextResponse.json({ error: 'El delay debe ser un número mayor a 0' }, { status: 400 })
+    }
+
+    // Solo cambiar status en campañas DRAFT/SCHEDULED — preservar PAUSED/FAILED/COMPLETED
+    const newStatus = ['DRAFT', 'SCHEDULED'].includes(campaign.status)
+        ? (scheduledAt ? 'SCHEDULED' : 'DRAFT')
+        : campaign.status
+
     const updated = await (prisma as any).broadcastCampaign.update({
         where: { id: params.id },
         data: {
-            ...(name && { name: name.trim() }),
-            ...(prompt && { prompt: prompt.trim() }),
-            ...(delayValue !== undefined && { delayValue: parseInt(delayValue) }),
+            ...(name?.trim() && { name: name.trim() }),
+            ...(prompt !== undefined && prompt !== null && { prompt: prompt.trim() }),
+            ...(delayValue !== undefined && { delayValue: parsedDelay }),
             ...(delayUnit && { delayUnit }),
             scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-            status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
+            status: newStatus,
         },
     })
 

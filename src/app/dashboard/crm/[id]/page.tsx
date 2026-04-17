@@ -7,7 +7,7 @@ import {
     ArrowLeft, Play, Pause, Users, CheckCircle2, XCircle,
     Clock, Loader2, AlertCircle, RefreshCw,
     Image as ImageIcon, Calendar, Smartphone, Wifi, WifiOff, Film, Mic,
-    Plus, Pencil, Trash2, Phone, X, Square
+    Plus, Pencil, Trash2, Phone, X, Square, Save, Copy, Upload
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -65,6 +65,20 @@ export default function CrmCampaignDetailPage() {
     const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const [uploadingAudio, setUploadingAudio] = useState(false)
 
+    // Edit mode (nombre, prompt, delay, scheduledAt)
+    const [isEditing, setIsEditing] = useState(false)
+    const [editForm, setEditForm] = useState({ name: '', prompt: '', delayValue: '30', delayUnit: 'seconds', scheduledAt: '' })
+    const [savingEdit, setSavingEdit] = useState(false)
+
+    // Image / audio management
+    const imageInputRef = useRef<HTMLInputElement>(null)
+    const audioUploadInputRef = useRef<HTMLInputElement>(null)
+    const [uploadingImageCount, setUploadingImageCount] = useState(0)
+    const [deletingImageId, setDeletingImageId] = useState<string | null>(null)
+
+    // Duplicate
+    const [duplicating, setDuplicating] = useState(false)
+
     useEffect(() => { fetchCampaign(); fetchWaStatus(); fetchAvailableBots() }, [id])
 
     useEffect(() => {
@@ -73,7 +87,7 @@ export default function CrmCampaignDetailPage() {
         return () => clearInterval(interval)
     }, [campaign?.status])
 
-    // Polling QR: solo cuando está conectando o esperando escaneo
+    // Polling QR
     useEffect(() => {
         if (waStatus.status === 'connected' || waStatus.status === 'disconnected') return
         const interval = setInterval(fetchWaStatus, 2000)
@@ -107,7 +121,6 @@ export default function CrmCampaignDetailPage() {
                     setSuccessMsg(`✅ WhatsApp conectado${data.phone ? ` (+${data.phone})` : ''}`)
                     setTimeout(() => setSuccessMsg(null), 4000)
                 }
-                // Cargar estado del bot recién asignado
                 const botRes = await fetch(`/api/bots/${botId}`)
                 if (botRes.ok) {
                     const botData = await botRes.json()
@@ -137,10 +150,7 @@ export default function CrmCampaignDetailPage() {
         setError(null)
         try {
             const res = await fetch(`/api/crm/campaigns/${id}/connect`, { method: 'POST' })
-            if (res.ok) {
-                setWaStatus({ status: 'connecting' })
-                // el polling del useEffect tomará el relevo
-            }
+            if (res.ok) setWaStatus({ status: 'connecting' })
         } catch {
             setError('Error al iniciar conexión')
         } finally {
@@ -181,6 +191,81 @@ export default function CrmCampaignDetailPage() {
         }
     }
 
+    // ── Edit mode ──
+    function startEdit() {
+        setEditForm({
+            name: campaign.name,
+            prompt: campaign.prompt || '',
+            delayValue: String(campaign.delayValue),
+            delayUnit: campaign.delayUnit,
+            scheduledAt: campaign.scheduledAt ? new Date(campaign.scheduledAt).toISOString().slice(0, 16) : '',
+        })
+        setIsEditing(true)
+    }
+
+    async function saveEdit() {
+        setSavingEdit(true)
+        try {
+            const res = await fetch(`/api/crm/campaigns/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm),
+            })
+            if (res.ok) {
+                setIsEditing(false)
+                setSuccessMsg('Cambios guardados')
+                setTimeout(() => setSuccessMsg(null), 3000)
+                fetchCampaign()
+            } else {
+                const data = await res.json()
+                setError(data.error || 'Error al guardar')
+            }
+        } catch { setError('Error al guardar') }
+        finally { setSavingEdit(false) }
+    }
+
+    // ── Image / media management ──
+    async function uploadImageFile(file: File) {
+        setUploadingImageCount(c => c + 1)
+        try {
+            const fd = new FormData()
+            fd.append('file', file)
+            const res = await fetch(`/api/crm/campaigns/${id}/images`, { method: 'POST', body: fd })
+            if (!res.ok) { const data = await res.json(); setError(data.error || 'Error al subir') }
+        } catch { setError('Error al subir archivo') }
+        finally {
+            setUploadingImageCount(c => c - 1)
+            fetchCampaign()
+        }
+    }
+
+    async function deleteImage(imageId: string) {
+        setDeletingImageId(imageId)
+        try {
+            const res = await fetch(`/api/crm/campaigns/${id}/images`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageId }),
+            })
+            if (res.ok) fetchCampaign()
+            else { const data = await res.json(); setError(data.error || 'Error al eliminar') }
+        } catch { setError('Error al eliminar archivo') }
+        finally { setDeletingImageId(null) }
+    }
+
+    // ── Audio ──
+    async function uploadAudioFromFile(file: File) {
+        setUploadingAudio(true)
+        try {
+            const fd = new FormData()
+            fd.append('file', file)
+            const res = await fetch(`/api/crm/campaigns/${id}/images`, { method: 'POST', body: fd })
+            if (res.ok) fetchCampaign()
+            else { const data = await res.json(); setError(data.error || 'Error al subir audio') }
+        } catch { setError('Error al subir audio') }
+        finally { setUploadingAudio(false) }
+    }
+
     async function startRecording() {
         setAudioError(null)
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -213,7 +298,9 @@ export default function CrmCampaignDetailPage() {
             recorder.onstop = async () => {
                 stream.getTracks().forEach(t => t.stop())
                 const blob = new Blob(audioChunksRef.current, { type: mimeType })
-                await uploadRecordedAudio(blob, mimeType)
+                const ext = mimeType.includes('ogg') ? 'ogg' : 'webm'
+                const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: mimeType.split(';')[0] })
+                await uploadAudioFromFile(file)
             }
             recorder.start(100)
             mediaRecorderRef.current = recorder
@@ -235,27 +322,22 @@ export default function CrmCampaignDetailPage() {
         setRecordingSeconds(0)
     }
 
-    async function uploadRecordedAudio(blob: Blob, mimeType: string) {
-        setUploadingAudio(true)
+    // ── Duplicate ──
+    async function duplicateCampaign() {
+        setDuplicating(true)
         try {
-            const ext = mimeType.includes('ogg') ? 'ogg' : 'webm'
-            const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: mimeType })
-            const formData = new FormData()
-            formData.append('file', file)
-            const res = await fetch(`/api/crm/campaigns/${id}/images`, { method: 'POST', body: formData })
-            if (!res.ok) {
-                const data = await res.json()
-                setError(data.error || 'Error al subir audio')
+            const res = await fetch(`/api/crm/campaigns/${id}/duplicate`, { method: 'POST' })
+            const data = await res.json()
+            if (res.ok) {
+                router.push(`/dashboard/crm/${data.campaign.id}`)
             } else {
-                fetchCampaign()
+                setError(data.error || 'Error al duplicar')
             }
-        } catch {
-            setError('Error al subir audio grabado')
-        } finally {
-            setUploadingAudio(false)
-        }
+        } catch { setError('Error al duplicar campaña') }
+        finally { setDuplicating(false) }
     }
 
+    // ── Contacts ──
     async function addContact() {
         if (!newPhone.trim()) return
         setAddingContact(true)
@@ -313,10 +395,6 @@ export default function CrmCampaignDetailPage() {
             const res = await fetch(`/api/crm/campaigns/${id}/execute`, { method: 'POST' })
             const data = await res.json()
             if (!res.ok) { setError(data.error); return }
-            // Optimistically set RUNNING so the pause button appears immediately.
-            // NOT calling fetchCampaign() here — if the DB hasn't updated yet it would
-            // overwrite the optimistic state back to DRAFT. The polling useEffect
-            // (setInterval every 4s) kicks in automatically once status is RUNNING.
             setCampaign((prev: any) => prev ? { ...prev, status: 'RUNNING' } : prev)
         } finally { setActionLoading(false) }
     }
@@ -341,16 +419,28 @@ export default function CrmCampaignDetailPage() {
     const pending = campaign.contacts?.filter((c: any) => c.status === 'PENDING').length ?? 0
     const sent = campaign.contacts?.filter((c: any) => c.status === 'SENT').length ?? campaign.sentCount
     const failed = campaign.contacts?.filter((c: any) => c.status === 'FAILED').length ?? campaign.failedCount
+    const canEdit = campaign.status !== 'RUNNING'
+
+    const visualFiles = campaign.images?.filter((img: any) => img.type !== 'AUDIO') ?? []
+    const audioFiles = campaign.images?.filter((img: any) => img.type === 'AUDIO') ?? []
 
     return (
         <div className="px-4 md:px-6 pt-6 max-w-screen-xl mx-auto pb-24 text-white">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                <Link href="/dashboard/crm" className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
+                <Link href="/dashboard/crm" className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all shrink-0">
                     <ArrowLeft size={16} />
                 </Link>
                 <div className="flex-1 min-w-0">
-                    <h1 className="text-xl font-black uppercase tracking-tighter truncate">{campaign.name}</h1>
+                    {isEditing ? (
+                        <input
+                            value={editForm.name}
+                            onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                            className="w-full bg-white/5 border border-amber-500/40 rounded-xl px-3 py-1.5 text-lg font-black text-white focus:outline-none focus:border-amber-500/70"
+                        />
+                    ) : (
+                        <h1 className="text-xl font-black uppercase tracking-tighter truncate">{campaign.name}</h1>
+                    )}
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-xs font-bold ${STATUS_COLORS[campaign.status]}`}>
                             {campaign.status === 'RUNNING' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse mr-1.5" />}
@@ -365,9 +455,42 @@ export default function CrmCampaignDetailPage() {
                         </span>
                     </div>
                 </div>
-                <button onClick={fetchCampaign} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                    <RefreshCw size={14} />
-                </button>
+
+                <div className="flex items-center gap-2 shrink-0">
+                    {isEditing ? (
+                        <>
+                            <button
+                                onClick={saveEdit}
+                                disabled={savingEdit}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-500 transition-all disabled:opacity-50"
+                            >
+                                {savingEdit ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                                Guardar
+                            </button>
+                            <button
+                                onClick={() => setIsEditing(false)}
+                                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-red-400"
+                            >
+                                <X size={14} />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            {canEdit && (
+                                <button
+                                    onClick={startEdit}
+                                    className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-amber-400"
+                                    title="Editar campaña"
+                                >
+                                    <Pencil size={14} />
+                                </button>
+                            )}
+                            <button onClick={fetchCampaign} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
+                                <RefreshCw size={14} />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {successMsg && (
@@ -414,10 +537,7 @@ export default function CrmCampaignDetailPage() {
                             <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                                 <div
                                     className="h-full rounded-full transition-all duration-500"
-                                    style={{
-                                        width: `${progress}%`,
-                                        background: 'linear-gradient(90deg, #B45309, #FFD700)',
-                                    }}
+                                    style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #B45309, #FFD700)' }}
                                 />
                             </div>
                             <div className="flex justify-between text-[10px] text-white/25 mt-1.5">
@@ -430,7 +550,17 @@ export default function CrmCampaignDetailPage() {
                     {/* Prompt */}
                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
                         <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-2">Prompt de la IA</p>
-                        <p className="text-sm text-white/70 leading-relaxed">{campaign.prompt}</p>
+                        {isEditing ? (
+                            <textarea
+                                value={editForm.prompt}
+                                onChange={e => setEditForm(f => ({ ...f, prompt: e.target.value }))}
+                                rows={5}
+                                placeholder="Mensaje que la IA usará como base para cada contacto..."
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none leading-relaxed"
+                            />
+                        ) : (
+                            <p className="text-sm text-white/70 leading-relaxed">{campaign.prompt || <span className="text-white/25 italic">Sin prompt</span>}</p>
+                        )}
                     </div>
 
                     {/* Contacts list */}
@@ -453,7 +583,6 @@ export default function CrmCampaignDetailPage() {
                             </div>
                         </div>
 
-                        {/* Formulario agregar */}
                         {showAddContact && (
                             <div className="p-3 border-b border-white/5 bg-white/[0.02] flex gap-2 items-center">
                                 <Phone size={12} className="text-white/30 shrink-0" />
@@ -579,7 +708,6 @@ export default function CrmCampaignDetailPage() {
                                         {waStatus.phone && <p className="text-[11px] text-white/60 mt-0.5">📱 +{waStatus.phone}</p>}
                                     </div>
                                 </div>
-                                {/* Toggle respuestas IA */}
                                 {botAiActive !== null && (
                                     <button
                                         type="button"
@@ -622,8 +750,6 @@ export default function CrmCampaignDetailPage() {
                                     <WifiOff size={14} className="text-white/30 shrink-0" />
                                     <p className="text-xs text-white/40">Sin conectar</p>
                                 </div>
-
-                                {/* Bots existentes */}
                                 {availableBots.length > 0 && (
                                     <div className="space-y-1.5">
                                         <p className="text-[10px] text-white/30 uppercase font-black tracking-widest">Usar bot existente</p>
@@ -653,7 +779,6 @@ export default function CrmCampaignDetailPage() {
                                         </div>
                                     </div>
                                 )}
-
                                 <button
                                     type="button"
                                     onClick={connectWhatsApp}
@@ -692,117 +817,235 @@ export default function CrmCampaignDetailPage() {
                                 {campaign.status === 'PAUSED' ? 'Reanudar envío' : campaign.status === 'FAILED' ? 'Reintentar envío' : 'Iniciar envío ahora'}
                             </button>
                         ) : null}
+
+                        {/* Duplicar — siempre disponible */}
+                        <button
+                            onClick={duplicateCampaign}
+                            disabled={duplicating}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs font-black transition-all border border-white/10 disabled:opacity-50"
+                        >
+                            {duplicating ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
+                            Duplicar campaña
+                        </button>
                     </div>
 
                     {/* Config */}
                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5 space-y-3">
                         <p className="text-xs font-black uppercase tracking-widest text-white/30">Configuración</p>
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-white/40 flex items-center gap-1.5"><Clock size={12} /> Delay</span>
-                                <span className="font-bold">{campaign.delayValue} {campaign.delayUnit === 'minutes' ? 'min' : 'seg'}</span>
-                            </div>
-                            {campaign.scheduledAt && (
-                                <div className="flex justify-between">
-                                    <span className="text-white/40 flex items-center gap-1.5"><Calendar size={12} /> Programado</span>
-                                    <span className="font-bold text-amber-400 text-xs">
-                                        {new Date(campaign.scheduledAt).toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                        {isEditing ? (
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5"><Clock size={10} /> Delay entre mensajes</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="3600"
+                                            value={editForm.delayValue}
+                                            onChange={e => setEditForm(f => ({ ...f, delayValue: e.target.value }))}
+                                            className="w-24 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                                        />
+                                        <select
+                                            value={editForm.delayUnit}
+                                            onChange={e => setEditForm(f => ({ ...f, delayUnit: e.target.value }))}
+                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                                        >
+                                            <option value="seconds">Segundos</option>
+                                            <option value="minutes">Minutos</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Media files */}
-                    {(() => {
-                        const visualFiles = campaign.images?.filter((img: any) => img.type !== 'AUDIO') ?? []
-                        const audioFiles = campaign.images?.filter((img: any) => img.type === 'AUDIO') ?? []
-                        const canEdit = !['RUNNING', 'COMPLETED'].includes(campaign.status)
-                        return (
-                            <>
-                                {/* Imágenes / videos */}
-                                {visualFiles.length > 0 && (
-                                    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
-                                            <ImageIcon size={12} /> Multimedia ({visualFiles.length})
-                                        </p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {visualFiles.map((img: any, i: number) => (
-                                                <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                                                    {img.type === 'VIDEO' ? (
-                                                        <div className="w-full h-full bg-purple-500/10 flex flex-col items-center justify-center">
-                                                            <Film size={24} className="text-purple-400" />
-                                                            <span className="text-[9px] text-purple-300 mt-1">Video</span>
-                                                        </div>
-                                                    ) : (
-                                                        <img src={img.url} alt="" className="w-full h-full object-cover" />
-                                                    )}
-                                                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded">{i + 1}</span>
-                                                    {img.type === 'VIDEO' && (
-                                                        <span className="absolute top-1 right-1 bg-purple-500/80 text-white text-[8px] font-bold px-1 rounded">VID</span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                <div>
+                                    <label className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1.5 flex items-center gap-1.5"><Calendar size={10} /> Programar (opcional)</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={editForm.scheduledAt}
+                                        onChange={e => setEditForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                                        style={{ colorScheme: 'dark' }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-white/40 flex items-center gap-1.5"><Clock size={12} /> Delay</span>
+                                    <span className="font-bold">{campaign.delayValue} {campaign.delayUnit === 'minutes' ? 'min' : 'seg'}</span>
+                                </div>
+                                {campaign.scheduledAt && (
+                                    <div className="flex justify-between">
+                                        <span className="text-white/40 flex items-center gap-1.5"><Calendar size={12} /> Programado</span>
+                                        <span className="font-bold text-amber-400 text-xs">
+                                            {new Date(campaign.scheduledAt).toLocaleString('es', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
                                 )}
+                            </div>
+                        )}
+                    </div>
 
-                                {/* Audios — siempre visible para poder grabar */}
-                                <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
-                                    <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
-                                        <Mic size={12} /> Audios — nota de voz {audioFiles.length > 0 && `(${audioFiles.length})`}
-                                    </p>
-                                    {audioFiles.length > 0 && (
-                                        <div className="space-y-2 mb-3">
-                                            {audioFiles.map((audio: any, i: number) => (
-                                                <div key={audio.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                                                    <Mic size={14} className="text-green-400 shrink-0" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-xs text-white/60 truncate">{audio.url.split('?')[0].split('/').pop()}</p>
-                                                    </div>
-                                                    <span className="text-[10px] text-white/30 shrink-0">#{i + 1}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {canEdit && (
-                                        isRecording ? (
-                                            <button
-                                                type="button"
-                                                onClick={stopRecording}
-                                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
-                                            >
-                                                <Square size={12} /> Detener grabación ({recordingSeconds}s)
-                                            </button>
-                                        ) : uploadingAudio ? (
-                                            <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
-                                                <Loader2 size={12} className="animate-spin" /> Subiendo audio...
+                    {/* Imágenes / videos */}
+                    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
+                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
+                            <ImageIcon size={12} /> Multimedia ({visualFiles.length})
+                        </p>
+
+                        {visualFiles.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {visualFiles.map((img: any, i: number) => (
+                                    <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group">
+                                        {img.type === 'VIDEO' ? (
+                                            <div className="w-full h-full bg-purple-500/10 flex flex-col items-center justify-center">
+                                                <Film size={24} className="text-purple-400" />
+                                                <span className="text-[9px] text-purple-300 mt-1">Video</span>
                                             </div>
                                         ) : (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={startRecording}
-                                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
-                                                >
-                                                    <Mic size={12} /> {audioFiles.length > 0 ? 'Grabar otro audio' : 'Grabar nota de voz'}
-                                                </button>
-                                                {audioError && (
-                                                    <div className="mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">
-                                                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                                                        <span>{audioError}</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        )
-                                    )}
-                                    {!canEdit && audioFiles.length === 0 && (
-                                        <p className="text-xs text-white/25">Sin audios cargados</p>
-                                    )}
-                                </div>
+                                            <img src={img.url} alt="" className="w-full h-full object-cover" />
+                                        )}
+                                        <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded">{i + 1}</span>
+                                        {img.type === 'VIDEO' && (
+                                            <span className="absolute top-1 right-1 bg-purple-500/80 text-white text-[8px] font-bold px-1 rounded">VID</span>
+                                        )}
+                                        {canEdit && (
+                                            <button
+                                                onClick={() => deleteImage(img.id)}
+                                                disabled={deletingImageId === img.id}
+                                                className="absolute top-1 left-1 w-5 h-5 bg-black/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-red-400 hover:text-red-300 disabled:opacity-60"
+                                            >
+                                                {deletingImageId === img.id ? <Loader2 size={8} className="animate-spin" /> : <X size={8} />}
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                {canEdit && (
+                                    <button
+                                        onClick={() => imageInputRef.current?.click()}
+                                        disabled={uploadingImageCount > 0}
+                                        className="aspect-square rounded-xl border-2 border-dashed border-white/15 hover:border-amber-500/40 flex flex-col items-center justify-center gap-1 text-white/30 hover:text-amber-400 transition-all disabled:opacity-50"
+                                    >
+                                        {uploadingImageCount > 0 ? <Loader2 size={16} className="animate-spin" /> : <><Upload size={14} /><span className="text-[9px] font-bold">Agregar</span></>}
+                                    </button>
+                                )}
+                            </div>
+                        ) : canEdit ? (
+                            <button
+                                onClick={() => imageInputRef.current?.click()}
+                                disabled={uploadingImageCount > 0}
+                                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-dashed border-white/15 hover:border-amber-500/40 text-white/30 hover:text-amber-400 transition-all disabled:opacity-50 mb-3"
+                            >
+                                {uploadingImageCount > 0 ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                                <span className="text-sm">Agregar imágenes o videos</span>
+                            </button>
+                        ) : (
+                            <p className="text-xs text-white/25 mb-3">Sin multimedia</p>
+                        )}
+
+                        {canEdit && (
+                            <>
+                                <input
+                                    ref={imageInputRef}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={e => {
+                                        Array.from(e.target.files || []).forEach(f => uploadImageFile(f))
+                                        e.target.value = ''
+                                    }}
+                                />
+                                <p className="text-[10px] text-white/20">JPG, PNG, WEBP, GIF · MP4, MOV, WEBM</p>
                             </>
-                        )
-                    })()}
+                        )}
+                    </div>
+
+                    {/* Audios */}
+                    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
+                        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3 flex items-center gap-2">
+                            <Mic size={12} /> Audios — nota de voz {audioFiles.length > 0 && `(${audioFiles.length})`}
+                        </p>
+
+                        {audioFiles.length > 0 && (
+                            <div className="space-y-2 mb-3">
+                                {audioFiles.map((audio: any, i: number) => (
+                                    <div key={audio.id} className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20 group">
+                                        <Mic size={14} className="text-green-400 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs text-white/60 truncate">{audio.url.split('?')[0].split('/').pop()}</p>
+                                        </div>
+                                        <span className="text-[10px] text-white/30 shrink-0">#{i + 1}</span>
+                                        {canEdit && (
+                                            <button
+                                                onClick={() => deleteImage(audio.id)}
+                                                disabled={deletingImageId === audio.id}
+                                                className="text-white/20 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 shrink-0 disabled:opacity-40"
+                                            >
+                                                {deletingImageId === audio.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {canEdit && (
+                            isRecording ? (
+                                <button
+                                    type="button"
+                                    onClick={stopRecording}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-black animate-pulse"
+                                >
+                                    <Square size={12} /> Detener grabación ({recordingSeconds}s)
+                                </button>
+                            ) : uploadingAudio ? (
+                                <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 text-white/40 text-xs">
+                                    <Loader2 size={12} className="animate-spin" /> Subiendo audio...
+                                </div>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={startRecording}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-black hover:bg-green-500/20 transition-all"
+                                    >
+                                        <Mic size={12} /> Grabar audio
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => audioUploadInputRef.current?.click()}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-white/15 hover:border-green-500/40 text-white/30 hover:text-green-400 transition-all text-xs font-black"
+                                    >
+                                        <Upload size={12} /> Subir audio
+                                    </button>
+                                </div>
+                            )
+                        )}
+
+                        {canEdit && (
+                            <>
+                                {audioError && (
+                                    <div className="mt-2 flex items-start gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[11px]">
+                                        <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                                        <span>{audioError}</span>
+                                    </div>
+                                )}
+                                <input
+                                    ref={audioUploadInputRef}
+                                    type="file"
+                                    accept="audio/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={e => {
+                                        Array.from(e.target.files || []).forEach(f => uploadAudioFromFile(f))
+                                        e.target.value = ''
+                                    }}
+                                />
+                            </>
+                        )}
+
+                        {!canEdit && audioFiles.length === 0 && (
+                            <p className="text-xs text-white/25">Sin audios cargados</p>
+                        )}
+                    </div>
 
                     {/* Logs recientes */}
                     {campaign.logs?.length > 0 && (
