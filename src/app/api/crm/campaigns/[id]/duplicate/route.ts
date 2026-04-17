@@ -33,6 +33,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
                 name: newName,
                 prompt: original.prompt,
                 messageExample: original.messageExample ?? null,
+                templateName: original.templateName ?? null,
+                templateVars: original.templateVars ?? null,
                 delayValue: original.delayValue,
                 delayUnit: original.delayUnit,
                 status: 'DRAFT',

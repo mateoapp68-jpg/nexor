@@ -198,7 +198,14 @@ export async function executeBroadcast(campaignId: string) {
 
                 if (campaign.templateName) {
                     // ── Template mode — envía template aprobado por Meta ──────────
-                    await sendWaTemplate(to, campaign.templateName, 'es', waPhoneId, waToken)
+                    let templateLanguage = 'es'
+                    try {
+                        if (campaign.templateVars) {
+                            const vars = JSON.parse(campaign.templateVars as string)
+                            if (vars?.language) templateLanguage = vars.language
+                        }
+                    } catch {}
+                    await sendWaTemplate(to, campaign.templateName, templateLanguage, waPhoneId, waToken)
                     sent = true
                     logMessage = `📋 Template: ${campaign.templateName}`
                 } else if (hasAudio) {

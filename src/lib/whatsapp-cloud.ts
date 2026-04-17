@@ -159,13 +159,13 @@ export async function createWaTemplate(
   if (headerType && headerType !== 'NONE') {
     if (headerType === 'TEXT' && headerText?.trim()) {
       components.push({ type: 'HEADER', format: 'TEXT', text: headerText.trim() })
-    } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && headerMediaUrl?.trim()) {
-      const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document'
+    } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType)) {
       components.push({
         type: 'HEADER',
         format: headerType,
-        example: { header_handle: [], header_url: [headerMediaUrl.trim()] },
-        [mediaKey]: { link: headerMediaUrl.trim() },
+        ...(headerMediaUrl?.trim() && {
+          example: { header_url: [headerMediaUrl.trim()] },
+        }),
       })
     }
   }

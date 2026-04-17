@@ -40,9 +40,10 @@ export default function NewCrmCampaignPage() {
     const [waCloudBots, setWaCloudBots] = useState<{ id: string; name: string }[]>([])
     const [selectedBotId, setSelectedBotId] = useState('')
     const [waMessageMode, setWaMessageMode] = useState<'ai' | 'template'>('ai')
-    const [waTemplates, setWaTemplates] = useState<{ name: string; status: string; bodyText: string }[]>([])
+    const [waTemplates, setWaTemplates] = useState<{ name: string; status: string; bodyText: string; language: string }[]>([])
     const [loadingWaTemplates, setLoadingWaTemplates] = useState(false)
     const [selectedTemplateName, setSelectedTemplateName] = useState('')
+    const [selectedTemplateLanguage, setSelectedTemplateLanguage] = useState('es')
     const [mediaFiles, setMediaFiles] = useState<{ file: File; preview: string; type: 'IMAGE' | 'VIDEO' }[]>([])
     const [audioFiles, setAudioFiles] = useState<{ file: File; name: string }[]>([])
 
@@ -96,6 +97,7 @@ export default function NewCrmCampaignPage() {
         setLoadingWaTemplates(true)
         setWaTemplates([])
         setSelectedTemplateName('')
+        setSelectedTemplateLanguage('es')
         try {
             const res = await fetch(`/api/bots/${botId}/wa-templates`)
             if (res.ok) {
@@ -105,6 +107,7 @@ export default function NewCrmCampaignPage() {
                     .map((t: any) => ({
                         name: t.name,
                         status: t.status,
+                        language: t.language ?? 'es',
                         bodyText: t.components?.find((c: any) => c.type === 'BODY')?.text ?? '',
                     }))
                 setWaTemplates(approved)
@@ -309,7 +312,10 @@ export default function NewCrmCampaignPage() {
                     ...form,
                     channelType,
                     ...(channelType === 'WHATSAPP_CLOUD' && { botId: selectedBotId }),
-                    ...(channelType === 'WHATSAPP_CLOUD' && waMessageMode === 'template' && selectedTemplateName && { templateName: selectedTemplateName }),
+                    ...(channelType === 'WHATSAPP_CLOUD' && waMessageMode === 'template' && selectedTemplateName && {
+                        templateName: selectedTemplateName,
+                        templateLanguage: selectedTemplateLanguage,
+                    }),
                 }),
             })
             const data = await res.json()
@@ -494,7 +500,7 @@ export default function NewCrmCampaignPage() {
                                                         <div className="space-y-1.5">
                                                             <p className="text-[10px] text-white/30 uppercase font-black tracking-widest mb-1">Seleccioná el template</p>
                                                             {waTemplates.map(t => (
-                                                                <button key={t.name} type="button" onClick={() => setSelectedTemplateName(t.name)}
+                                                                <button key={t.name} type="button" onClick={() => { setSelectedTemplateName(t.name); setSelectedTemplateLanguage(t.language) }}
                                                                     className={`w-full text-left p-3 rounded-xl border transition-all ${selectedTemplateName === t.name ? 'border-green-500/50 bg-green-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
                                                                     <div className="flex items-center justify-between mb-1">
                                                                         <code className="text-xs font-bold text-green-400">{t.name}</code>
