@@ -2833,10 +2833,10 @@ function ChatsTab({ bot }: { bot: Bot }) {
               </div>
 
               {/* ── Input de respuesta ── */}
-              {bot.type !== 'YCLOUD' ? (
+              {!['YCLOUD', 'WHATSAPP_CLOUD'].includes(bot.type) ? (
                 <div className="px-4 py-3 flex items-center justify-center shrink-0" style={{ background: theme.headerBg }}>
                   <span className="text-xs rounded-full px-3 py-1.5" style={{ background: 'rgba(255,255,255,0.05)', color: '#8696a0' }}>
-                    Envío manual solo disponible para bots YCloud
+                    Envío manual no disponible para este tipo de bot
                   </span>
                 </div>
               ) : (

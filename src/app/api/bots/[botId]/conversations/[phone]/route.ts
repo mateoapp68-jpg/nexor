@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
 import { sendText } from '@/lib/ycloud'
 import { BaileysManager } from '@/lib/baileys-manager'
+import { sendWaText } from '@/lib/whatsapp-cloud'
 import { createNotification } from '@/lib/notifications'
 
 type Params = { params: { botId: string; phone: string } }
@@ -97,6 +98,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         } else if (bot.type === 'BAILEYS') {
           await BaileysManager.sendText(bot.id, reportPhone, reportText)
         }
+        } else if (bot.type === 'WHATSAPP_CLOUD' && bot.secret?.metaPageTokenEnc && bot.secret?.metaPhoneNumberId) {
+          const waToken = decrypt(bot.secret.metaPageTokenEnc as string)
+          const waPhoneId = bot.secret.metaPhoneNumberId as string
+          await sendWaText(reportPhone, reportText, waPhoneId, waToken)
+        }
         // META: no tiene mecanismo de WhatsApp para reportar — solo notificación
       } catch (err) {
         console.error(`[PATCH markAsSold] sendReport error (${bot.type}):`, err)
@@ -121,7 +127,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ conversation: updated })
 }
 
-// POST — send a manual text message to the contact via YCloud (only for YCLOUD bots)
+// POST — send a manual text message to the contact (YCLOUD and WHATSAPP_CLOUD)
 export async function POST(req: NextRequest, { params }: Params) {
   const user = await getAuthUser()
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
@@ -130,21 +136,33 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!bot) return NextResponse.json({ error: 'Bot no encontrado' }, { status: 404 })
   if (!conv) return NextResponse.json({ error: 'Conversación no encontrada' }, { status: 404 })
   if (!bot.secret) return NextResponse.json({ error: 'Bot sin credenciales' }, { status: 400 })
-  if (bot.type !== 'YCLOUD') return NextResponse.json({ error: 'El envío manual solo está disponible para bots YCloud' }, { status: 400 })
+  if (!['YCLOUD', 'WHATSAPP_CLOUD'].includes(bot.type)) {
+    return NextResponse.json({ error: 'El envío manual no está disponible para este tipo de bot' }, { status: 400 })
+  }
 
   const body = await req.json() as { text?: string }
   const text = body.text?.trim()
   if (!text) return NextResponse.json({ error: 'Texto vacío' }, { status: 400 })
 
-  const apiKey = decrypt(bot.secret.ycloudApiKeyEnc)
-  const from = bot.secret.whatsappInstanceNumber
-  const to = conv.userPhone.replace(/^\+/, '').replace(/\s/g, '')
+  const to = conv.userPhone.replace(/\D/g, '')
 
   try {
-    await sendText(from, to, text, apiKey)
+    if (bot.type === 'YCLOUD') {
+      const apiKey = decrypt(bot.secret.ycloudApiKeyEnc)
+      const from = bot.secret.whatsappInstanceNumber
+      await sendText(from, to, text, apiKey)
+    } else {
+      // WHATSAPP_CLOUD
+      const waToken = decrypt(bot.secret.metaPageTokenEnc as string)
+      const waPhoneId = bot.secret.metaPhoneNumberId as string
+      if (!waToken || !waPhoneId) {
+        return NextResponse.json({ error: 'Bot sin token o Phone Number ID configurados' }, { status: 400 })
+      }
+      await sendWaText(to, text, waPhoneId, waToken)
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error enviando mensaje'
-    return NextResponse.json({ error: `YCloud: ${msg}` }, { status: 502 })
+    return NextResponse.json({ error: msg }, { status: 502 })
   }
 
   const msg = await prisma.message.create({
