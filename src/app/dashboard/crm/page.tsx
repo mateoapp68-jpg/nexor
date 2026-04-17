@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
     Plus, Play, Pause, Trash2, Eye,
     Loader2, MessageSquare, AlertCircle,
-    Download, Wifi
+    Download, Wifi, RotateCcw
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,10 +27,12 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function CrmPage() {
+    const router = useRouter()
     const [campaigns, setCampaigns] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [reenvying, setReenvying] = useState<string | null>(null)
 
     useEffect(() => { fetchCampaigns() }, [])
 
@@ -70,6 +73,17 @@ export default function CrmPage() {
         const data = await res.json()
         if (!res.ok) { setError(data.error); return }
         fetchCampaigns()
+    }
+
+    async function reenviarCampaign(id: string) {
+        setReenvying(id)
+        try {
+            const res = await fetch(`/api/crm/campaigns/${id}/duplicate`, { method: 'POST' })
+            const data = await res.json()
+            if (!res.ok) { setError(data.error || 'Error al reenviar'); return }
+            router.push(`/dashboard/crm/${data.campaign.id}`)
+        } catch { setError('Error al reenviar campaña') }
+        finally { setReenvying(null) }
     }
 
     if (loading) return (
@@ -200,6 +214,15 @@ export default function CrmPage() {
                                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-xs font-bold transition-all"
                                     >
                                         <Pause size={12} /> Pausar
+                                    </button>
+                                ) : c.status === 'COMPLETED' ? (
+                                    <button
+                                        onClick={() => reenviarCampaign(c.id)}
+                                        disabled={reenvying === c.id}
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition-all disabled:opacity-50"
+                                    >
+                                        {reenvying === c.id ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                                        Reenviar
                                     </button>
                                 ) : ['DRAFT', 'SCHEDULED', 'PAUSED', 'FAILED'].includes(c.status) ? (
                                     <button
