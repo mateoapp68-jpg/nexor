@@ -87,7 +87,10 @@ export async function POST(request: NextRequest) {
     }
 
     const typeStr = body.type as string
-    const type = typeStr === 'BAILEYS' ? 'BAILEYS' : typeStr === 'META' ? 'META' : 'YCLOUD'
+    const type = typeStr === 'BAILEYS' ? 'BAILEYS'
+      : typeStr === 'META' ? 'META'
+      : typeStr === 'WHATSAPP_CLOUD' ? 'WHATSAPP_CLOUD'
+      : 'YCLOUD'
     const webhookToken = generateSecureToken(32)
 
     const defaultPromptTemplate = `# 🎯 IDENTIDAD
@@ -297,6 +300,8 @@ Si no hubo confirmación → "reporte": "".
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://tu-dominio.com'
     const webhookUrl = type === 'META'
       ? `${appUrl}/api/webhooks/meta/${bot.id}`
+      : type === 'WHATSAPP_CLOUD'
+      ? `${appUrl}/api/webhooks/whatsapp-cloud/${bot.id}`
       : `${appUrl}/api/webhooks/ycloud/whatsapp/${bot.id}?token=${webhookToken}`
 
     return NextResponse.json({ bot, webhookUrl, webhookToken }, { status: 201 })

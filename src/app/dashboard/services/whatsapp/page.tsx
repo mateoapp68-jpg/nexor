@@ -47,7 +47,7 @@ import {
 interface Bot {
   id: string
   name: string
-  type: 'YCLOUD' | 'BAILEYS' | 'META'
+  type: 'YCLOUD' | 'BAILEYS' | 'META' | 'WHATSAPP_CLOUD'
   status: 'ACTIVE' | 'PAUSED'
   webhookToken: string
   systemPromptTemplate: string | null
@@ -138,7 +138,7 @@ function Spinner({ color }: { color?: string }) {
 
 function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string) => void }) {
   const [name, setName] = useState('')
-  const [type, setType] = useState<'YCLOUD' | 'BAILEYS' | 'META'>('YCLOUD')
+  const [type, setType] = useState<'YCLOUD' | 'BAILEYS' | 'META' | 'WHATSAPP_CLOUD'>('YCLOUD')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -172,7 +172,7 @@ function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string
       </h3>
 
       {/* Tipo de bot */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <button
           type="button"
           onClick={() => setType('YCLOUD')}
@@ -201,13 +201,25 @@ function CreateBotForm({ onCreated }: { onCreated: (bot: Bot, webhookUrl: string
           type="button"
           onClick={() => setType('META')}
           className={`p-3 rounded-xl border text-left transition-all ${type === 'META'
-            ? 'border-amber-400/50 bg-amber-400/10 text-white'
+            ? 'border-blue-400/50 bg-blue-400/10 text-white'
             : 'border-white/10 text-white/35 hover:border-white/20'
             }`}
         >
           <MessageSquare className="w-4 h-4 mb-1.5" />
           <div className="text-xs font-bold">Messenger</div>
           <div className="text-[10px] text-white/25 mt-0.5">Facebook/Instagram</div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setType('WHATSAPP_CLOUD')}
+          className={`p-3 rounded-xl border text-left transition-all ${type === 'WHATSAPP_CLOUD'
+            ? 'border-green-400/50 bg-green-400/10 text-white'
+            : 'border-white/10 text-white/35 hover:border-white/20'
+            }`}
+        >
+          <Wifi className="w-4 h-4 mb-1.5" />
+          <div className="text-xs font-bold">WA Cloud</div>
+          <div className="text-[10px] text-white/25 mt-0.5">API Oficial Meta</div>
         </button>
       </div>
 
@@ -294,9 +306,13 @@ function BotCard({ bot, onSelect }: { bot: Bot; onSelect: (bot: Bot) => void }) 
 
 function WebhookTab({ bot }: { bot: Bot }) {
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://tu-dominio.com'
-  const isMeta = bot.type === 'META'
+  const isMeta          = bot.type === 'META'
+  const isWhatsappCloud = bot.type === 'WHATSAPP_CLOUD'
+  const isMetaFamily    = isMeta || isWhatsappCloud
   const webhookUrl = isMeta
     ? `${appUrl}/api/webhooks/meta/${bot.id}`
+    : isWhatsappCloud
+    ? `${appUrl}/api/webhooks/whatsapp-cloud/${bot.id}`
     : `${appUrl}/api/webhooks/ycloud/whatsapp/${bot.id}?token=${bot.webhookToken}`
   const [clearing, setClearing] = useState(false)
   const [clearMsg, setClearMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
@@ -327,13 +343,15 @@ function WebhookTab({ bot }: { bot: Bot }) {
         <p className="text-xs text-white/35 mb-4">
           {isMeta
             ? 'Configura esta URL en developers.facebook.com → tu App → Messenger → Webhooks. El Verify Token es el de abajo.'
+            : isWhatsappCloud
+            ? 'Configura esta URL en developers.facebook.com → tu App → WhatsApp → Configuración → Webhooks. El Verify Token es el de abajo.'
             : 'Configura esta URL en tu panel de YCloud como Webhook URL para mensajes entrantes.'}
         </p>
         <div className="bg-[#0B0B12]/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
           <code className="flex-1 text-xs text-indigo-400 break-all font-mono">{webhookUrl}</code>
           <CopyButton text={webhookUrl} />
         </div>
-        {isMeta && (
+        {(isMeta || isWhatsappCloud) && (
           <div className="mt-3">
             <p className="text-xs text-white/35 mb-2">Verify Token (pégalo en Meta al configurar el webhook):</p>
             <div className="bg-[#0B0B12]/70 border border-white/5 rounded-xl p-3 flex items-center gap-2">
@@ -344,7 +362,7 @@ function WebhookTab({ bot }: { bot: Bot }) {
         )}
       </div>
 
-      {!isMeta && (
+      {!isMeta && !isWhatsappCloud && (
         <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
           <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
             <Key className="w-4 h-4 text-violet-400" />
@@ -364,7 +382,33 @@ function WebhookTab({ bot }: { bot: Bot }) {
       )}
 
       <div className="bg-white/5 border border-white/10 p-6 rounded-2xl">
-        {isMeta ? (
+        {isWhatsappCloud ? (
+          <>
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              <span className="text-base">💬</span> Pasos de configuración en WhatsApp Cloud API
+            </h3>
+            <ol className="space-y-3">
+              {[
+                'Ve a developers.facebook.com e inicia sesión con tu cuenta de Facebook',
+                'Selecciona tu App → en el panel izquierdo ve a WhatsApp → Configuración',
+                'En "Webhooks" haz clic en "Editar" junto a "URL de devolución de llamada"',
+                'Pega la URL del webhook de arriba en el campo "URL de devolución de llamada"',
+                'Pega el Verify Token de arriba en el campo "Token de verificación"',
+                'Haz clic en "Verificar y guardar" — Meta enviará el challenge y el bot responderá',
+                'En los campos del webhook suscríbete a: messages',
+                'Guarda el Token de acceso permanente y el Phone Number ID en Credenciales',
+                'Envía un mensaje de prueba a tu número de WhatsApp Business',
+              ].map((step, i) => (
+                <li key={i} className="flex gap-3 text-sm text-white/50">
+                  <span className="w-5 h-5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : isMeta ? (
           <>
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <span className="text-base">💬</span> Pasos de configuración en Meta (Facebook Messenger)
@@ -445,21 +489,24 @@ function WebhookTab({ bot }: { bot: Bot }) {
 // ─── Credentials Tab ──────────────────────────────────────────────────────────
 
 function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (status: 'ACTIVE' | 'PAUSED') => void }) {
-  const isBaileys = bot.type === 'BAILEYS'
-  const isMeta    = bot.type === 'META'
+  const isBaileys       = bot.type === 'BAILEYS'
+  const isMeta          = bot.type === 'META'
+  const isWhatsappCloud = bot.type === 'WHATSAPP_CLOUD'
+  const isMetaFamily    = isMeta || isWhatsappCloud
   const [form, setForm] = useState({
     ycloudApiKey: '',
     openaiApiKey: '',
     whatsappInstanceNumber: '',
     reportPhone: '',
     metaPageToken: '',
+    metaPhoneNumberId: '',
   })
   const [selectedModel, setSelectedModel] = useState(bot.aiModel || 'gpt-5.1')
   const [savingModel, setSavingModel] = useState(false)
   const [showYcloud, setShowYcloud] = useState(false)
   const [showOpenai, setShowOpenai] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
-  const [creds, setCreds] = useState<{ hasYcloudKey: boolean; hasOpenAIKey: boolean; hasMetaToken: boolean; metaPageTokenHint: string; whatsappInstanceNumber: string; reportPhone: string } | null>(null)
+  const [creds, setCreds] = useState<{ hasYcloudKey: boolean; hasOpenAIKey: boolean; hasMetaToken: boolean; metaPageTokenHint: string; whatsappInstanceNumber: string; reportPhone: string; metaPhoneNumberId: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
   const [msg, setMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
@@ -473,6 +520,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         ...f,
         whatsappInstanceNumber: data.whatsappInstanceNumber,
         reportPhone: data.reportPhone,
+        metaPhoneNumberId: data.metaPhoneNumberId ?? '',
       }))
     }
   }, [bot.id])
@@ -553,7 +601,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         {msg && <Alert type={msg.type} msg={msg.text} />}
 
         {/* YCloud API Key — solo para bots YCloud */}
-        {!isBaileys && !isMeta && (
+        {!isBaileys && !isMetaFamily && (
           <div>
             <label className="block text-xs font-medium text-white/50 mb-1.5">
               YCloud API Key{' '}
@@ -580,11 +628,11 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
           </div>
         )}
 
-        {/* Meta Page Access Token — solo para bots META */}
-        {isMeta && (
+        {/* Meta Page Access Token / WA Cloud token — para bots META y WHATSAPP_CLOUD */}
+        {isMetaFamily && (
           <div>
             <label className="block text-xs font-medium text-white/50 mb-1.5">
-              Meta Page Access Token{' '}
+              {isWhatsappCloud ? 'Token de acceso permanente (WhatsApp Cloud)' : 'Meta Page Access Token'}{' '}
               {creds?.hasMetaToken && (
                 <span className="text-amber-400 ml-1">✓ configurado ({creds.metaPageTokenHint})</span>
               )}
@@ -605,7 +653,33 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
                 {showMeta ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-xs text-white/25 mt-1">Obtén el token permanente desde developers.facebook.com → tu App → Messenger → Tokens de acceso.</p>
+            <p className="text-xs text-white/25 mt-1">
+              {isWhatsappCloud
+                ? 'Token permanente desde developers.facebook.com → tu App → WhatsApp → Configuración → Token de acceso.'
+                : 'Obtén el token permanente desde developers.facebook.com → tu App → Messenger → Tokens de acceso.'}
+            </p>
+          </div>
+        )}
+
+        {/* Phone Number ID — solo para bots WHATSAPP_CLOUD */}
+        {isWhatsappCloud && (
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">
+              Phone Number ID{' '}
+              {creds?.metaPhoneNumberId && (
+                <span className="text-green-400 ml-1">✓ {creds.metaPhoneNumberId}</span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={form.metaPhoneNumberId}
+              onChange={e => setForm(f => ({ ...f, metaPhoneNumberId: e.target.value }))}
+              placeholder={creds?.metaPhoneNumberId ? '(dejar vacío para mantener)' : '1040256079177709'}
+              className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-green-400/40"
+            />
+            <p className="text-xs text-white/25 mt-1">
+              Encuéntralo en developers.facebook.com → tu App → WhatsApp → Configuración → Phone Number ID.
+            </p>
           </div>
         )}
 
@@ -639,7 +713,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         </div>
 
         {/* WhatsApp number — solo para bots YCloud */}
-        {!isBaileys && !isMeta && (
+        {!isBaileys && !isMetaFamily && (
           <div>
             <label className="block text-xs font-medium text-white/50 mb-1.5">
               Número WhatsApp Business (from)
@@ -654,7 +728,7 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
         )}
 
         {/* Report phone — solo para bots WhatsApp (YCLOUD y BAILEYS) */}
-        {!isMeta && (
+        {!isMetaFamily && (
           <div>
             <label className="block text-xs font-medium text-white/50 mb-1.5">
               Número interno para reportes

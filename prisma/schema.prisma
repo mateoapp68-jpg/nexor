@@ -26,6 +26,7 @@ enum BotType {
   YCLOUD
   BAILEYS
   META
+  WHATSAPP_CLOUD
 }
 
 enum MessageRole {
@@ -210,6 +211,7 @@ model BotSecret {
   whatsappInstanceNumber String  @map("whatsapp_instance_number")
   reportPhone            String  @map("report_phone")
   metaPageTokenEnc       String? @map("meta_page_token_enc")
+  metaPhoneNumberId      String? @map("meta_phone_number_id")
   bot                    Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
 
   @@map("bot_secrets")
