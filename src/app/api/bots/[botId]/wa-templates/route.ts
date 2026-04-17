@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
-import { listWaTemplates, createWaTemplate, deleteWaTemplate } from '@/lib/whatsapp-cloud'
+import { listWaTemplates, createWaTemplate, deleteWaTemplate, WaTemplateButton } from '@/lib/whatsapp-cloud'
 
 type Params = { params: { botId: string } }
 
@@ -57,30 +57,34 @@ export async function POST(req: NextRequest, { params }: Params) {
     language?: string
     category?: string
     bodyText?: string
+    headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
     headerText?: string
+    headerMediaUrl?: string
     footerText?: string
+    buttons?: WaTemplateButton[]
   }
 
-  const { name, language, category, bodyText, headerText, footerText } = body
+  const { name, language, category, bodyText, headerType, headerText, headerMediaUrl, footerText, buttons } = body
 
   if (!name?.trim()) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
   if (!bodyText?.trim()) return NextResponse.json({ error: 'El texto del cuerpo es requerido' }, { status: 400 })
 
-  // Template names: lowercase, underscores only
   const safeName = name.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_')
-
   const token = decrypt(secret.metaPageTokenEnc)
   const wabaId = secret.metaWabaId
 
   try {
-    const result = await createWaTemplate(
-      wabaId, token, safeName,
-      language || 'es',
-      category || 'MARKETING',
-      bodyText.trim(),
+    const result = await createWaTemplate(wabaId, token, {
+      name: safeName,
+      language: language || 'es',
+      category: category || 'MARKETING',
+      bodyText: bodyText.trim(),
+      headerType,
       headerText,
+      headerMediaUrl,
       footerText,
-    )
+      buttons,
+    })
     return NextResponse.json({ ok: true, template: result }, { status: 201 })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 502 })

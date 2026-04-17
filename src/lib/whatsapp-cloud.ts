@@ -127,24 +127,67 @@ export async function listWaTemplates(wabaId: string, token: string): Promise<un
   return res.json()
 }
 
+export interface WaTemplateButton {
+  type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER'
+  text: string
+  url?: string          // for URL buttons
+  phone_number?: string // for PHONE_NUMBER buttons
+}
+
+export interface WaTemplatePayload {
+  name: string
+  language: string
+  category: string
+  bodyText: string
+  headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+  headerText?: string
+  headerMediaUrl?: string
+  footerText?: string
+  buttons?: WaTemplateButton[]
+}
+
 /** Create a template and submit for Meta review */
 export async function createWaTemplate(
   wabaId: string,
   token: string,
-  name: string,
-  language: string,
-  category: string,
-  bodyText: string,
-  headerText?: string,
-  footerText?: string,
+  payload: WaTemplatePayload,
 ): Promise<unknown> {
+  const { name, language, category, bodyText, headerType, headerText, headerMediaUrl, footerText, buttons } = payload
   const components: unknown[] = []
-  if (headerText?.trim()) {
-    components.push({ type: 'HEADER', format: 'TEXT', text: headerText.trim() })
+
+  // Header component
+  if (headerType && headerType !== 'NONE') {
+    if (headerType === 'TEXT' && headerText?.trim()) {
+      components.push({ type: 'HEADER', format: 'TEXT', text: headerText.trim() })
+    } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && headerMediaUrl?.trim()) {
+      const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document'
+      components.push({
+        type: 'HEADER',
+        format: headerType,
+        example: { header_handle: [], header_url: [headerMediaUrl.trim()] },
+        [mediaKey]: { link: headerMediaUrl.trim() },
+      })
+    }
   }
+
+  // Body
   components.push({ type: 'BODY', text: bodyText })
+
+  // Footer
   if (footerText?.trim()) {
     components.push({ type: 'FOOTER', text: footerText.trim() })
+  }
+
+  // Buttons
+  if (buttons && buttons.length > 0) {
+    components.push({
+      type: 'BUTTONS',
+      buttons: buttons.map(b => {
+        if (b.type === 'QUICK_REPLY') return { type: 'QUICK_REPLY', text: b.text }
+        if (b.type === 'URL') return { type: 'URL', text: b.text, url: b.url }
+        return { type: 'PHONE_NUMBER', text: b.text, phone_number: b.phone_number }
+      }),
+    })
   }
 
   const url = `${WA_BASE}/${wabaId}/message_templates`
