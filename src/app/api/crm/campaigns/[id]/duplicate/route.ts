@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { generateSecureToken } from '@/lib/crypto'
 
 /** POST /api/crm/campaigns/[id]/duplicate — clona la campaña con imágenes y contactos */
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -17,17 +18,34 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     })
     if (!original) return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
 
-    // Crear nueva campaña como DRAFT
-    const newCampaign = await (prisma as any).broadcastCampaign.create({
-        data: {
-            userId: user.id,
-            name: `${original.name} (copia)`,
-            prompt: original.prompt,
-            delayValue: original.delayValue,
-            delayUnit: original.delayUnit,
-            status: 'DRAFT',
-            totalContacts: original.contacts.length,
-        },
+    const newName = `${original.name} (copia)`
+
+    // Crear bot dedicado + campaña en transacción (igual que POST /api/crm/campaigns)
+    const [, newCampaign] = await prisma.$transaction(async (tx: any) => {
+        const bot = await tx.bot.create({
+            data: {
+                userId: user.id,
+                name: `__crm__${newName}`,
+                type: 'BAILEYS',
+                webhookToken: generateSecureToken(32),
+                systemPromptTemplate: '',
+            },
+        })
+
+        const camp = await tx.broadcastCampaign.create({
+            data: {
+                userId: user.id,
+                botId: bot.id,
+                name: newName,
+                prompt: original.prompt,
+                delayValue: original.delayValue,
+                delayUnit: original.delayUnit,
+                status: 'DRAFT',
+                totalContacts: original.contacts.length,
+            },
+        })
+
+        return [bot, camp]
     })
 
     // Copiar imágenes/audios (mismas URLs, sin re-subir)
@@ -42,7 +60,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         })
     }
 
-    // Copiar contactos — todos resetean a PENDING
+    // Copiar contactos — todos reseteados a PENDING
     if (original.contacts.length > 0) {
         const CHUNK = 500
         for (let i = 0; i < original.contacts.length; i += CHUNK) {
