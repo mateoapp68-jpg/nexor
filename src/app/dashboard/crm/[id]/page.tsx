@@ -446,13 +446,17 @@ export default function CrmCampaignDetailPage() {
                             {campaign.status === 'RUNNING' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse mr-1.5" />}
                             {STATUS_LABELS[campaign.status]}
                         </span>
-                        <span className={`text-xs font-bold ${waStatus.status === 'connected' ? 'text-green-400' : 'text-white/20'}`}>
-                            · WA {waStatus.status === 'connected'
-                                ? `✓${waStatus.phone ? ` +${waStatus.phone}` : ''}`
-                                : waStatus.status === 'connecting' || waStatus.status === 'qr_ready'
-                                    ? 'conectando...'
-                                    : 'desconectado'}
-                        </span>
+                        {campaign.bot?.type === 'WHATSAPP_CLOUD' ? (
+                            <span className="text-xs font-bold text-green-400">· Cloud API ✓</span>
+                        ) : (
+                            <span className={`text-xs font-bold ${waStatus.status === 'connected' ? 'text-green-400' : 'text-white/20'}`}>
+                                · WA {waStatus.status === 'connected'
+                                    ? `✓${waStatus.phone ? ` +${waStatus.phone}` : ''}`
+                                    : waStatus.status === 'connecting' || waStatus.status === 'qr_ready'
+                                        ? 'conectando...'
+                                        : 'desconectado'}
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -693,13 +697,24 @@ export default function CrmCampaignDetailPage() {
                 {/* Right col */}
                 <div className="space-y-5">
 
-                    {/* WhatsApp QR */}
+                    {/* WhatsApp connection panel */}
                     <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5 space-y-3">
                         <p className="text-xs font-black uppercase tracking-widest text-white/30 flex items-center gap-2">
                             <Smartphone size={12} /> WhatsApp
                         </p>
 
-                        {waStatus.status === 'connected' ? (
+                        {campaign.bot?.type === 'WHATSAPP_CLOUD' ? (
+                            // WA Cloud: no necesita QR, siempre "conectado"
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                                    <Wifi size={14} className="text-green-400 shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-bold text-green-400">Cloud API conectado</p>
+                                        <p className="text-[11px] text-white/50 mt-0.5">API oficial de Meta · {campaign.bot.name}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : waStatus.status === 'connected' ? (
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                                     <Wifi size={14} className="text-green-400 shrink-0" />

@@ -12,6 +12,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     const original = await (prisma as any).broadcastCampaign.findFirst({
         where: { id: params.id, userId: user.id },
         include: {
+            bot: { select: { type: true } },
             images: { orderBy: { order: 'asc' } },
             contacts: { orderBy: { createdAt: 'asc' } },
         },
@@ -19,23 +20,16 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     if (!original) return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
 
     const newName = `${original.name} (copia)`
+    const isWaCloud = original.bot?.type === 'WHATSAPP_CLOUD'
 
-    // Crear bot dedicado + campaña en transacción (igual que POST /api/crm/campaigns)
-    const [, newCampaign] = await prisma.$transaction(async (tx: any) => {
-        const bot = await tx.bot.create({
+    let newCampaign: any
+
+    if (isWaCloud) {
+        // WA Cloud: reutilizar el mismo bot (no crear uno nuevo)
+        newCampaign = await (prisma as any).broadcastCampaign.create({
             data: {
                 userId: user.id,
-                name: `__crm__${newName}`,
-                type: 'BAILEYS',
-                webhookToken: generateSecureToken(32),
-                systemPromptTemplate: '',
-            },
-        })
-
-        const camp = await tx.broadcastCampaign.create({
-            data: {
-                userId: user.id,
-                botId: bot.id,
+                botId: original.botId,
                 name: newName,
                 prompt: original.prompt,
                 delayValue: original.delayValue,
@@ -44,9 +38,36 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
                 totalContacts: original.contacts.length,
             },
         })
+    } else {
+        // Baileys: crear bot dedicado + campaña en transacción
+        const [, camp] = await prisma.$transaction(async (tx: any) => {
+            const bot = await tx.bot.create({
+                data: {
+                    userId: user.id,
+                    name: `__crm__${newName}`,
+                    type: 'BAILEYS',
+                    webhookToken: generateSecureToken(32),
+                    systemPromptTemplate: '',
+                },
+            })
 
-        return [bot, camp]
-    })
+            const c = await tx.broadcastCampaign.create({
+                data: {
+                    userId: user.id,
+                    botId: bot.id,
+                    name: newName,
+                    prompt: original.prompt,
+                    delayValue: original.delayValue,
+                    delayUnit: original.delayUnit,
+                    status: 'DRAFT',
+                    totalContacts: original.contacts.length,
+                },
+            })
+
+            return [bot, c]
+        })
+        newCampaign = camp
+    }
 
     // Copiar imágenes/audios (mismas URLs, sin re-subir)
     if (original.images.length > 0) {

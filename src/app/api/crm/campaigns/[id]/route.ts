@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const campaign = await (prisma as any).broadcastCampaign.findFirst({
         where: { id: params.id, userId: user.id },
         include: {
-            bot: { select: { id: true, name: true, baileysPhone: true, status: true } },
+            bot: { select: { id: true, name: true, baileysPhone: true, status: true, type: true } },
             images: { orderBy: { order: 'asc' } },
             contacts: { orderBy: { createdAt: 'asc' } },
             logs: { orderBy: { sentAt: 'desc' }, take: 100 },

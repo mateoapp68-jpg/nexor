@@ -727,8 +727,8 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
           </div>
         )}
 
-        {/* Report phone — solo para bots WhatsApp (YCLOUD y BAILEYS) */}
-        {!isMetaFamily && (
+        {/* Report phone — YCLOUD, BAILEYS y WHATSAPP_CLOUD (no META/Messenger) */}
+        {!isMeta && (
           <div>
             <label className="block text-xs font-medium text-white/50 mb-1.5">
               Número interno para reportes
@@ -736,9 +736,9 @@ function CredentialsTab({ bot, onStatusChange }: { bot: Bot; onStatusChange: (st
             <input
               value={form.reportPhone}
               onChange={e => setForm(f => ({ ...f, reportPhone: e.target.value }))}
-              placeholder="15559876543"
+              placeholder="59172794224"
               className="w-full bg-[#0B0B12]/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-400/40"
-              required
+              required={!isBaileys && !isWhatsappCloud}
             />
             <p className="text-xs text-white/25 mt-1">
               Cuando un cliente confirme su pedido, el agente enviará un reporte a este número por WhatsApp.

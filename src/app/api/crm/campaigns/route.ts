@@ -11,7 +11,7 @@ export async function GET() {
     const campaigns = await (prisma as any).broadcastCampaign.findMany({
         where: { userId: user.id },
         include: {
-            bot: { select: { id: true, name: true, baileysPhone: true } },
+            bot: { select: { id: true, name: true, baileysPhone: true, type: true } },
             images: { orderBy: { order: 'asc' } },
             _count: { select: { contacts: true, logs: true } },
         },
@@ -26,26 +26,25 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const body = await req.json()
-    const { name, prompt, delayValue, delayUnit, scheduledAt } = body
+    const { name, prompt, delayValue, delayUnit, scheduledAt, channelType, botId } = body
 
     if (!name?.trim()) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
 
-    // Auto-crear bot Baileys dedicado + campaña en una transacción atómica
-    const webhookToken = generateSecureToken(32)
     const campaignName = name.trim()
+    const isWaCloud = channelType === 'WHATSAPP_CLOUD'
 
-    const [, campaign] = await prisma.$transaction(async (tx: any) => {
-        const bot = await tx.bot.create({
-            data: {
-                userId: user.id,
-                name: `__crm__${campaignName}`,
-                type: 'BAILEYS',
-                webhookToken,
-                systemPromptTemplate: '',
-            },
+    let campaign: any
+
+    if (isWaCloud) {
+        // WA Cloud: reutilizar el bot WHATSAPP_CLOUD existente del usuario
+        if (!botId) return NextResponse.json({ error: 'Seleccioná un bot de WhatsApp Cloud' }, { status: 400 })
+
+        const bot = await prisma.bot.findFirst({
+            where: { id: botId, userId: user.id, type: 'WHATSAPP_CLOUD' },
         })
+        if (!bot) return NextResponse.json({ error: 'Bot no encontrado o no es de tipo WhatsApp Cloud' }, { status: 404 })
 
-        const camp = await tx.broadcastCampaign.create({
+        campaign = await (prisma as any).broadcastCampaign.create({
             data: {
                 userId: user.id,
                 botId: bot.id,
@@ -57,13 +56,47 @@ export async function POST(req: NextRequest) {
                 status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
             },
             include: {
-                bot: { select: { id: true, name: true } },
+                bot: { select: { id: true, name: true, type: true } },
                 images: true,
             },
         })
+    } else {
+        // Baileys: auto-crear bot dedicado + campaña en una transacción atómica
+        const webhookToken = generateSecureToken(32)
 
-        return [bot, camp]
-    })
+        const [, camp] = await prisma.$transaction(async (tx: any) => {
+            const bot = await tx.bot.create({
+                data: {
+                    userId: user.id,
+                    name: `__crm__${campaignName}`,
+                    type: 'BAILEYS',
+                    webhookToken,
+                    systemPromptTemplate: '',
+                },
+            })
+
+            const c = await tx.broadcastCampaign.create({
+                data: {
+                    userId: user.id,
+                    botId: bot.id,
+                    name: campaignName,
+                    prompt: prompt?.trim() || '',
+                    delayValue: parseInt(delayValue) || 30,
+                    delayUnit: delayUnit || 'seconds',
+                    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                    status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
+                },
+                include: {
+                    bot: { select: { id: true, name: true, type: true } },
+                    images: true,
+                },
+            })
+
+            return [bot, c]
+        })
+
+        campaign = camp
+    }
 
     return NextResponse.json({ campaign }, { status: 201 })
 }

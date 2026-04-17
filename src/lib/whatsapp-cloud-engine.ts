@@ -451,6 +451,15 @@ export class WhatsAppCloudEngine {
         data: { sold: true, soldAt: new Date() },
       }).catch(() => {})
 
+      // Enviar reporte al número configurado (igual que YCLOUD/Baileys)
+      const reportPhone = bot.secret.reportPhone
+      if (reportPhone?.trim()) {
+        const reportTo = reportPhone.replace(/\D/g, '')
+        await sendWaText(reportTo, response.reporte, phoneNumberId, token).catch(e =>
+          console.error('[WA_CLOUD] sendReport ERROR:', e.message),
+        )
+      }
+
       createNotification(
         bot.user.id,
         `🤖 Nueva venta — ${bot.name} (WhatsApp Cloud)`,

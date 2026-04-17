@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
     Plus, Play, Pause, Trash2, Eye,
     Loader2, MessageSquare, AlertCircle,
-    Download, Wifi, RotateCcw
+    Download, Wifi, RotateCcw, Smartphone
 } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -143,9 +143,13 @@ export default function CrmPage() {
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                     <p className="font-black text-white truncate">{c.name}</p>
-                                    {c.bot?.baileysPhone ? (
+                                    {c.bot?.type === 'WHATSAPP_CLOUD' ? (
                                         <p className="flex items-center gap-1 text-[11px] text-green-400 mt-0.5 font-bold">
-                                            <Wifi size={10} /> WA conectado · +{c.bot.baileysPhone}
+                                            <Wifi size={10} /> Cloud API · {c.bot.name}
+                                        </p>
+                                    ) : c.bot?.baileysPhone ? (
+                                        <p className="flex items-center gap-1 text-[11px] text-green-400 mt-0.5 font-bold">
+                                            <Smartphone size={10} /> QR · +{c.bot.baileysPhone}
                                         </p>
                                     ) : (
                                         <p className="text-xs text-white/25 mt-0.5">Sin WhatsApp conectado</p>

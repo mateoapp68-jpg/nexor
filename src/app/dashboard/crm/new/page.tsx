@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
     ArrowLeft, Upload, X, Loader2, AlertCircle, CheckCircle2,
     Clock, Calendar, Users, Sparkles, Image as ImageIcon, Film,
-    Pencil, Trash2, Plus, Phone, FileText, ChevronDown, Mic
+    Pencil, Trash2, Plus, Phone, FileText, ChevronDown, Mic, Wifi
 } from 'lucide-react'
 
 interface ContactEntry {
@@ -35,6 +35,9 @@ export default function NewCrmCampaignPage() {
         delayUnit: 'seconds',
         scheduledAt: '',
     })
+    const [channelType, setChannelType] = useState<'BAILEYS' | 'WHATSAPP_CLOUD'>('BAILEYS')
+    const [waCloudBots, setWaCloudBots] = useState<{ id: string; name: string }[]>([])
+    const [selectedBotId, setSelectedBotId] = useState('')
     const [mediaFiles, setMediaFiles] = useState<{ file: File; preview: string; type: 'IMAGE' | 'VIDEO' }[]>([])
     const [audioFiles, setAudioFiles] = useState<{ file: File; name: string }[]>([])
 
@@ -71,7 +74,18 @@ export default function NewCrmCampaignPage() {
     const [uploadingImg, setUploadingImg] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => { fetchTemplates() }, [])
+    useEffect(() => { fetchTemplates(); fetchWaCloudBots() }, [])
+
+    async function fetchWaCloudBots() {
+        try {
+            const res = await fetch('/api/bots')
+            if (res.ok) {
+                const data = await res.json()
+                const bots = (data.bots ?? []).filter((b: any) => b.type === 'WHATSAPP_CLOUD')
+                setWaCloudBots(bots.map((b: any) => ({ id: b.id, name: b.name })))
+            }
+        } catch { setWaCloudBots([]) }
+    }
 
     async function fetchTemplates() {
         try {
@@ -255,6 +269,7 @@ export default function NewCrmCampaignPage() {
 
         if (mediaFiles.length === 0 && audioFiles.length === 0) { setError('Agrega al menos 1 archivo (imagen, video o audio)'); return }
         if (contacts.length === 0) { setError('Agrega contactos (desde Excel, etiquetas o manualmente)'); return }
+        if (channelType === 'WHATSAPP_CLOUD' && !selectedBotId) { setError('Seleccioná un bot de WhatsApp Cloud'); return }
 
         setLoading(true)
         try {
@@ -262,7 +277,11 @@ export default function NewCrmCampaignPage() {
             const res = await fetch('/api/crm/campaigns', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify({
+                    ...form,
+                    channelType,
+                    ...(channelType === 'WHATSAPP_CLOUD' && { botId: selectedBotId }),
+                }),
             })
             const data = await res.json()
             if (!res.ok) { setError(data.error); return }
@@ -361,6 +380,61 @@ export default function NewCrmCampaignPage() {
                         required
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/10"
                     />
+                </div>
+
+                {/* Canal de envío */}
+                <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-5">
+                    <label className="block text-xs font-black uppercase tracking-widest text-white/40 mb-3">Canal de envío</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setChannelType('BAILEYS')}
+                            className={`flex flex-col items-start gap-1 p-4 rounded-xl border-2 transition-all ${channelType === 'BAILEYS' ? 'border-amber-500/60 bg-amber-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                        >
+                            <span className="text-sm font-black text-white">QR Baileys</span>
+                            <span className="text-[11px] text-white/40">Conectá tu número escaneando un QR</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setChannelType('WHATSAPP_CLOUD')}
+                            className={`flex flex-col items-start gap-1 p-4 rounded-xl border-2 transition-all ${channelType === 'WHATSAPP_CLOUD' ? 'border-green-500/60 bg-green-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                        >
+                            <span className="text-sm font-black text-white flex items-center gap-1.5"><Wifi size={13} className="text-green-400" /> WA Cloud API</span>
+                            <span className="text-[11px] text-white/40">Usa la API oficial de Meta</span>
+                        </button>
+                    </div>
+
+                    {channelType === 'WHATSAPP_CLOUD' && (
+                        <div className="mt-3">
+                            {waCloudBots.length === 0 ? (
+                                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+                                    <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-amber-400">
+                                        No tenés bots de WhatsApp Cloud configurados.{' '}
+                                        <Link href="/dashboard/services/whatsapp" className="underline">Crear uno →</Link>
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    <p className="text-[10px] text-white/30 uppercase font-black tracking-widest mb-2">Seleccioná el bot</p>
+                                    {waCloudBots.map(bot => (
+                                        <button
+                                            key={bot.id}
+                                            type="button"
+                                            onClick={() => setSelectedBotId(bot.id)}
+                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${selectedBotId === bot.id ? 'border-green-500/50 bg-green-500/10 text-green-400' : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Wifi size={12} className={selectedBotId === bot.id ? 'text-green-400' : 'text-white/30'} />
+                                                <span className="text-xs font-bold">{bot.name}</span>
+                                            </div>
+                                            {selectedBotId === bot.id && <CheckCircle2 size={13} className="text-green-400 shrink-0" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Prompt */}

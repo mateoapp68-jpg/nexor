@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { BaileysManager } from '@/lib/baileys-manager'
 import { decrypt } from '@/lib/crypto'
 import { getGlobalOpenAIKey, logAiUsage } from '@/lib/ai-credits'
+import { sendWaText, sendWaImage, sendWaVideo, sendWaAudio } from '@/lib/whatsapp-cloud'
 
 const OPENAI_BASE = 'https://api.openai.com/v1'
 
@@ -76,10 +77,23 @@ export async function executeBroadcast(campaignId: string) {
         include: {
             images: { orderBy: { order: 'asc' } },
             contacts: { where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } },
+            bot: {
+                select: {
+                    type: true,
+                    secret: {
+                        select: {
+                            metaPageTokenEnc: true,
+                            metaPhoneNumberId: true,
+                        },
+                    },
+                },
+            },
         },
     })
 
     if (!campaign || campaign.status === 'COMPLETED' || campaign.status === 'FAILED') return
+
+    const isWaCloud = campaign.bot?.type === 'WHATSAPP_CLOUD'
 
     // Mark as running
     await (prisma as any).broadcastCampaign.update({
@@ -114,24 +128,33 @@ export async function executeBroadcast(campaignId: string) {
         return
     }
 
-    // Auto-reconnect si hay sesión en disco pero no en memoria
-    const currentStatus = BaileysManager.getStatus(campaign.botId)
-    if (currentStatus.status !== 'connected') {
-        await BaileysManager.connect(campaign.botId, campaign.name, openaiKey, '')
-        // Esperar hasta 20s para conectar
-        for (let i = 0; i < 20; i++) {
-            await new Promise(r => setTimeout(r, 1000))
-            if (BaileysManager.getStatus(campaign.botId).status === 'connected') break
+    // WA Cloud: verificar que el bot tenga token y phoneNumberId configurados
+    if (isWaCloud) {
+        if (!campaign.bot?.secret?.metaPageTokenEnc || !campaign.bot?.secret?.metaPhoneNumberId) {
+            await (prisma as any).broadcastCampaign.update({ where: { id: campaignId }, data: { status: 'FAILED' } })
+            console.error(`[BROADCAST] Bot WHATSAPP_CLOUD sin token o phoneNumberId. Campaña ${campaignId} marcada como FAILED.`)
+            return
         }
-    }
-    // Si sigue desconectado, fallar campaña
-    if (BaileysManager.getStatus(campaign.botId).status !== 'connected') {
-        await (prisma as any).broadcastCampaign.update({
-            where: { id: campaignId },
-            data: { status: 'FAILED' },
-        })
-        console.error(`[BROADCAST] Bot ${campaign.botId} no conectado. Campaña ${campaignId} marcada como FAILED.`)
-        return
+    } else {
+        // Baileys: Auto-reconnect si hay sesión en disco pero no en memoria
+        const currentStatus = BaileysManager.getStatus(campaign.botId)
+        if (currentStatus.status !== 'connected') {
+            await BaileysManager.connect(campaign.botId, campaign.name, openaiKey, '')
+            // Esperar hasta 20s para conectar
+            for (let i = 0; i < 20; i++) {
+                await new Promise(r => setTimeout(r, 1000))
+                if (BaileysManager.getStatus(campaign.botId).status === 'connected') break
+            }
+        }
+        // Si sigue desconectado, fallar campaña
+        if (BaileysManager.getStatus(campaign.botId).status !== 'connected') {
+            await (prisma as any).broadcastCampaign.update({
+                where: { id: campaignId },
+                data: { status: 'FAILED' },
+            })
+            console.error(`[BROADCAST] Bot ${campaign.botId} no conectado. Campaña ${campaignId} marcada como FAILED.`)
+            return
+        }
     }
     let mediaIndex: number = campaign.imageIndex || 0
     const delayBetween = delayMs(campaign.delayValue, campaign.delayUnit)
@@ -152,61 +175,103 @@ export async function executeBroadcast(campaignId: string) {
         if (!stillExists || stillExists.status !== 'PENDING') continue
 
         try {
-            // Send via Baileys
-            const conn = BaileysManager.getStatus(campaign.botId)
-            if (conn.status !== 'connected') {
-                await (prisma as any).broadcastContact.update({
-                    where: { id: contact.id },
-                    data: { status: 'FAILED', error: 'Bot desconectado', sentAt: new Date() },
-                })
-                await (prisma as any).broadcastCampaign.update({
-                    where: { id: campaignId },
-                    data: { failedCount: { increment: 1 } },
-                })
-                continue
-            }
-
             let sent = false
             let logMessage = ''
             let logImageUrl: string | null = null
             const nextIndex = allMedia.length > 0 ? (mediaIndex + 1) % Math.max(audioFiles.length, visualMedia.length, 1) : 0
 
-            if (hasAudio) {
-                // Modo audio: enviar imagen primero si existe, luego audio PTT. Sin texto.
-                if (hasVisual) {
-                    const visual = visualMedia[mediaIndex % visualMedia.length]
-                    logImageUrl = visual.url
-                    if (visual.type === 'VIDEO') {
-                        await BaileysManager.sendVideo(campaign.botId, contact.phone, visual.url).catch(() => {})
-                    } else {
-                        await BaileysManager.sendImage(campaign.botId, contact.phone, visual.url).catch(() => {})
+            if (isWaCloud) {
+                // ── WhatsApp Cloud API ──────────────────────────────────────────
+                const waToken = decrypt(campaign.bot.secret.metaPageTokenEnc)
+                const waPhoneId = campaign.bot.secret.metaPhoneNumberId
+                const to = contact.phone.replace(/\D/g, '')
+
+                if (hasAudio) {
+                    if (hasVisual) {
+                        const visual = visualMedia[mediaIndex % visualMedia.length]
+                        logImageUrl = visual.url
+                        if (visual.type === 'VIDEO') {
+                            await sendWaVideo(to, visual.url, waPhoneId, waToken).catch(() => {})
+                        } else {
+                            await sendWaImage(to, visual.url, waPhoneId, waToken).catch(() => {})
+                        }
+                        await new Promise(r => setTimeout(r, 1500))
                     }
-                    await new Promise(r => setTimeout(r, 1500))
+                    const audio = audioFiles[mediaIndex % audioFiles.length]
+                    await sendWaAudio(to, audio.url, waPhoneId, waToken)
+                    sent = true
+                    logMessage = '🎙️ Audio'
+                } else {
+                    const generated = await generateUniqueMessage(campaign.prompt, openaiKey)
+                    logMessage = generated.message
+                    if (isGlobalKey) {
+                        logAiUsage({ userId: campaign.userId, service: 'broadcast', model: 'gpt-4o', promptTokens: generated.promptTokens, completionTokens: generated.completionTokens }).catch(() => {})
+                    }
+                    if (hasVisual) {
+                        const visual = visualMedia[mediaIndex % visualMedia.length]
+                        logImageUrl = visual.url
+                        if (visual.type === 'VIDEO') {
+                            await sendWaVideo(to, visual.url, waPhoneId, waToken).catch(() => {})
+                        } else {
+                            await sendWaImage(to, visual.url, waPhoneId, waToken).catch(() => {})
+                        }
+                        await new Promise(r => setTimeout(r, 1500))
+                    }
+                    await sendWaText(to, generated.message, waPhoneId, waToken)
+                    sent = true
                 }
-                const audio = audioFiles[mediaIndex % audioFiles.length]
-                sent = await BaileysManager.sendAudio(campaign.botId, contact.phone, audio.url)
-                logMessage = '🎙️ Audio'
             } else {
-                // Modo texto: generar mensaje de IA, enviar visual opcional + texto
-                const generated = await generateUniqueMessage(campaign.prompt, openaiKey)
-                logMessage = generated.message
-                if (isGlobalKey) {
-                    logAiUsage({ userId: campaign.userId, service: 'broadcast', model: 'gpt-4o', promptTokens: generated.promptTokens, completionTokens: generated.completionTokens }).catch(() => {})
+                // ── Baileys ────────────────────────────────────────────────────
+                const conn = BaileysManager.getStatus(campaign.botId)
+                if (conn.status !== 'connected') {
+                    await (prisma as any).broadcastContact.update({
+                        where: { id: contact.id },
+                        data: { status: 'FAILED', error: 'Bot desconectado', sentAt: new Date() },
+                    })
+                    await (prisma as any).broadcastCampaign.update({
+                        where: { id: campaignId },
+                        data: { failedCount: { increment: 1 } },
+                    })
+                    continue
                 }
 
-                if (hasVisual) {
-                    const visual = visualMedia[mediaIndex % visualMedia.length]
-                    logImageUrl = visual.url
-                    if (visual.type === 'VIDEO') {
-                        await BaileysManager.sendVideo(campaign.botId, contact.phone, visual.url).catch(() => {})
-                    } else {
-                        await BaileysManager.sendImage(campaign.botId, contact.phone, visual.url).catch(() => {})
+                if (hasAudio) {
+                    // Modo audio: enviar imagen primero si existe, luego audio PTT. Sin texto.
+                    if (hasVisual) {
+                        const visual = visualMedia[mediaIndex % visualMedia.length]
+                        logImageUrl = visual.url
+                        if (visual.type === 'VIDEO') {
+                            await BaileysManager.sendVideo(campaign.botId, contact.phone, visual.url).catch(() => {})
+                        } else {
+                            await BaileysManager.sendImage(campaign.botId, contact.phone, visual.url).catch(() => {})
+                        }
+                        await new Promise(r => setTimeout(r, 1500))
                     }
-                    await new Promise(r => setTimeout(r, 1500))
-                }
+                    const audio = audioFiles[mediaIndex % audioFiles.length]
+                    sent = await BaileysManager.sendAudio(campaign.botId, contact.phone, audio.url)
+                    logMessage = '🎙️ Audio'
+                } else {
+                    // Modo texto: generar mensaje de IA, enviar visual opcional + texto
+                    const generated = await generateUniqueMessage(campaign.prompt, openaiKey)
+                    logMessage = generated.message
+                    if (isGlobalKey) {
+                        logAiUsage({ userId: campaign.userId, service: 'broadcast', model: 'gpt-4o', promptTokens: generated.promptTokens, completionTokens: generated.completionTokens }).catch(() => {})
+                    }
 
-                sent = await BaileysManager.sendText(campaign.botId, contact.phone, generated.message)
-                if (!sent) throw new Error('sendText retornó false')
+                    if (hasVisual) {
+                        const visual = visualMedia[mediaIndex % visualMedia.length]
+                        logImageUrl = visual.url
+                        if (visual.type === 'VIDEO') {
+                            await BaileysManager.sendVideo(campaign.botId, contact.phone, visual.url).catch(() => {})
+                        } else {
+                            await BaileysManager.sendImage(campaign.botId, contact.phone, visual.url).catch(() => {})
+                        }
+                        await new Promise(r => setTimeout(r, 1500))
+                    }
+
+                    sent = await BaileysManager.sendText(campaign.botId, contact.phone, generated.message)
+                    if (!sent) throw new Error('sendText retornó false')
+                }
             }
 
             if (sent) {

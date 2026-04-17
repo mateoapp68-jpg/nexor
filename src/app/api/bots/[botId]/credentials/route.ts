@@ -98,7 +98,8 @@ export async function PUT(
   if (!isBaileys && !isMetaFamily && !whatsappInstanceNumber?.trim()) {
     return NextResponse.json({ error: 'El número de WhatsApp es requerido' }, { status: 400 })
   }
-  if (!isMetaFamily && !reportPhone?.trim()) {
+  // reportPhone requerido para YCLOUD (no para BAILEYS, WHATSAPP_CLOUD ni META)
+  if (!isBaileys && !isMetaFamily && !reportPhone?.trim()) {
     return NextResponse.json({ error: 'El número de reporte es requerido' }, { status: 400 })
   }
   if (isMeta && !metaPageToken?.trim() && !bot.secret?.metaPageTokenEnc) {
@@ -156,7 +157,7 @@ export async function PUT(
       ycloudApiKeyEnc: ycloudEnc,
       openaiApiKeyEnc: openaiEnc,
       whatsappInstanceNumber: (isBaileys || isMetaFamily) ? '' : whatsappInstanceNumber?.trim() ?? '',
-      reportPhone: isMetaFamily ? '' : reportPhone.trim(),
+      reportPhone: isMeta ? '' : (reportPhone?.trim() ?? ''),
       ...(metaTokenEnc && { metaPageTokenEnc: metaTokenEnc }),
       ...(resolvedPhoneId && { metaPhoneNumberId: resolvedPhoneId }),
     },
@@ -166,7 +167,7 @@ export async function PUT(
       ...(!isBaileys && !isMetaFamily && whatsappInstanceNumber?.trim() && {
         whatsappInstanceNumber: whatsappInstanceNumber.trim(),
       }),
-      ...(!isMetaFamily && { reportPhone: reportPhone.trim() }),
+      ...(!isMeta && { reportPhone: reportPhone?.trim() ?? '' }),
       ...(metaTokenEnc && { metaPageTokenEnc: metaTokenEnc }),
       ...(resolvedPhoneId && { metaPhoneNumberId: resolvedPhoneId }),
     },
