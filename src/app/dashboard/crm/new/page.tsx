@@ -102,8 +102,9 @@ export default function NewCrmCampaignPage() {
             const res = await fetch(`/api/bots/${botId}/wa-templates`)
             if (res.ok) {
                 const data = await res.json()
+                const EXCLUDED = ['REJECTED', 'DELETED', 'PENDING_DELETION']
                 const approved = (data.templates ?? [])
-                    .filter((t: any) => t.status === 'APPROVED')
+                    .filter((t: any) => !EXCLUDED.includes(t.status))
                     .map((t: any) => ({
                         name: t.name,
                         status: t.status,
@@ -505,7 +506,12 @@ export default function NewCrmCampaignPage() {
                                                                     className={`w-full text-left p-3 rounded-xl border transition-all ${selectedTemplateName === t.name ? 'border-green-500/50 bg-green-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
                                                                     <div className="flex items-center justify-between mb-1">
                                                                         <code className="text-xs font-bold text-green-400">{t.name}</code>
-                                                                        {selectedTemplateName === t.name && <CheckCircle2 size={13} className="text-green-400 shrink-0" />}
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            {t.status !== 'APPROVED' && (
+                                                                                <span className="text-[10px] text-amber-400/70 font-bold">{t.status}</span>
+                                                                            )}
+                                                                            {selectedTemplateName === t.name && <CheckCircle2 size={13} className="text-green-400 shrink-0" />}
+                                                                        </div>
                                                                     </div>
                                                                     {t.bodyText && <p className="text-[11px] text-white/50 line-clamp-2">{t.bodyText}</p>}
                                                                 </button>
