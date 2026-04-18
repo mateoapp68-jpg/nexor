@@ -131,8 +131,9 @@ export async function executeBroadcast(campaignId: string) {
     const hasAudio = audioFiles.length > 0
     const hasVisual = visualMedia.length > 0
 
-    // Solo requerir OpenAI key si la campaña necesita generar texto (sin audios)
-    if (!openaiKey && !hasAudio) {
+    // Solo requerir OpenAI key si la campaña necesita generar texto (sin audios y sin template)
+    const isTemplateMode = !!(campaign.templateName)
+    if (!openaiKey && !hasAudio && !isTemplateMode) {
         await (prisma as any).broadcastCampaign.update({ where: { id: campaignId }, data: { status: 'FAILED' } })
         console.error(`[BROADCAST] No hay OpenAI API Key para campaña ${campaignId}`)
         return

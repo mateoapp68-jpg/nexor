@@ -216,7 +216,7 @@ export default function WaTemplatesPage() {
     setShowAdvanced(false); setSaveError(null)
   }
 
-  function insertVar(pos: 'body') {
+  function insertVar() {
     const nextNum = (bodyText.match(/\{\{\d+\}\}/g) ?? []).length + 1
     setBodyText(t => t + `{{${nextNum}}}`)
   }
@@ -254,9 +254,18 @@ export default function WaTemplatesPage() {
     if (!confirm(`¿Eliminar "${tplName}"?`)) return
     setDeletingName(tplName)
     try {
-      await fetch(`/api/bots/${botId}/wa-templates?name=${encodeURIComponent(tplName)}`, { method: 'DELETE' })
+      const res = await fetch(`/api/bots/${botId}/wa-templates?name=${encodeURIComponent(tplName)}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(`Error al eliminar: ${data.error ?? 'Error desconocido'}`)
+        return
+      }
       setTemplates(prev => prev.filter(t => t.name !== tplName))
-    } finally { setDeletingName(null) }
+    } catch {
+      alert('Error de conexión al eliminar la plantilla')
+    } finally {
+      setDeletingName(null)
+    }
   }
 
   function addButton() {
@@ -394,7 +403,7 @@ export default function WaTemplatesPage() {
                     <label className="text-xs text-white/40 font-bold uppercase tracking-widest">
                       Texto del mensaje
                     </label>
-                    <button type="button" onClick={() => insertVar('body')}
+                    <button type="button" onClick={() => insertVar()}
                       className="flex items-center gap-1 text-[11px] font-bold text-amber-400/70 hover:text-amber-400 transition-colors">
                       <Plus className="w-3 h-3" /> Añadir variable
                     </button>

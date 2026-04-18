@@ -118,7 +118,7 @@ export async function sendWaTemplate(
 
 /** List templates for a WABA — returns raw Meta response */
 export async function listWaTemplates(wabaId: string, token: string): Promise<unknown> {
-  const url = `${WA_BASE}/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=100`
+  const url = `${WA_BASE}/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=250`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) {
     const err = await res.text()
@@ -156,10 +156,23 @@ export async function createWaTemplate(
   const { name, language, category, bodyText, headerType, headerText, headerMediaUrl, footerText, buttons } = payload
   const components: unknown[] = []
 
+  // Helper: count {{N}} variables in a string
+  function countVars(text: string): number {
+    return (text.match(/\{\{\d+\}\}/g) ?? []).length
+  }
+
   // Header component
   if (headerType && headerType !== 'NONE') {
     if (headerType === 'TEXT' && headerText?.trim()) {
-      components.push({ type: 'HEADER', format: 'TEXT', text: headerText.trim() })
+      const headerVarCount = countVars(headerText.trim())
+      components.push({
+        type: 'HEADER',
+        format: 'TEXT',
+        text: headerText.trim(),
+        ...(headerVarCount > 0 && {
+          example: { header_text: Array.from({ length: headerVarCount }, (_, i) => `Ejemplo${i + 1}`) },
+        }),
+      })
     } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType)) {
       components.push({
         type: 'HEADER',
@@ -171,8 +184,17 @@ export async function createWaTemplate(
     }
   }
 
-  // Body
-  components.push({ type: 'BODY', text: bodyText })
+  // Body — if has variables, include example values (required by Meta)
+  const bodyVarCount = countVars(bodyText)
+  components.push({
+    type: 'BODY',
+    text: bodyText,
+    ...(bodyVarCount > 0 && {
+      example: {
+        body_text: [Array.from({ length: bodyVarCount }, (_, i) => `Ejemplo${i + 1}`)],
+      },
+    }),
+  })
 
   // Footer
   if (footerText?.trim()) {
