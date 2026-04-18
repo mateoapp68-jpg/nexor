@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Clock,
   XCircle, RefreshCw, Sparkles, Image as ImageIcon, Film,
   FileText, Phone, Globe, X, ChevronDown, ChevronUp, Copy,
-  MessageSquare, Eye,
+  MessageSquare, Eye, Upload, Link,
 } from 'lucide-react'
 
 type HeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
@@ -192,6 +192,10 @@ export default function WaTemplatesPage() {
   const [headerType, setHeaderType]   = useState<HeaderType>('NONE')
   const [headerText, setHeaderText]   = useState('')
   const [headerMediaUrl, setHeaderMediaUrl] = useState('')
+  const [mediaInputMode, setMediaInputMode] = useState<'url' | 'upload'>('upload')
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [uploadedFileName, setUploadedFileName] = useState('')
+  const mediaFileRef = useRef<HTMLInputElement>(null)
   const [bodyText, setBodyText]       = useState('')
   const [footerText, setFooterText]   = useState('')
   const [buttons, setButtons]         = useState<TemplateButton[]>([])
@@ -212,8 +216,24 @@ export default function WaTemplatesPage() {
   function resetForm() {
     setName(''); setCategory('MARKETING'); setLanguage('es')
     setHeaderType('NONE'); setHeaderText(''); setHeaderMediaUrl('')
+    setMediaInputMode('upload'); setUploadedFileName('')
     setBodyText(''); setFooterText(''); setButtons([])
     setShowAdvanced(false); setSaveError(null)
+  }
+
+  async function handleMediaUpload(file: File) {
+    setUploadingMedia(true)
+    setSaveError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/bots/${botId}/template-media`, { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) { setSaveError(data.error); return }
+      setHeaderMediaUrl(data.url)
+      setUploadedFileName(file.name)
+    } catch { setSaveError('Error al subir el archivo') }
+    finally  { setUploadingMedia(false) }
   }
 
   function insertVar() {
@@ -373,7 +393,7 @@ export default function WaTemplatesPage() {
                   </label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {HEADER_OPTIONS.map(opt => (
-                      <button key={opt.value} type="button" onClick={() => setHeaderType(opt.value)}
+                      <button key={opt.value} type="button" onClick={() => { setHeaderType(opt.value); setHeaderMediaUrl(''); setUploadedFileName(''); setMediaInputMode('upload') }}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${headerType === opt.value ? 'border-amber-500/60 bg-amber-500/10 text-amber-400' : 'border-white/10 bg-white/5 text-white/40 hover:text-white/70'}`}>
                         <opt.icon className="w-3 h-3" /> {opt.label}
                       </button>
@@ -388,11 +408,59 @@ export default function WaTemplatesPage() {
                     </div>
                   )}
                   {['IMAGE','VIDEO','DOCUMENT'].includes(headerType) && (
-                    <div>
-                      <input value={headerMediaUrl} onChange={e => setHeaderMediaUrl(e.target.value)}
-                        placeholder={headerType === 'IMAGE' ? 'https://... URL de la imagen' : headerType === 'VIDEO' ? 'https://... URL del vídeo' : 'https://... URL del documento PDF'}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50" />
-                      <p className="text-[10px] text-white/25 mt-1">URL pública accesible por Meta · se usa como muestra de contenido</p>
+                    <div className="space-y-2">
+                      {/* Toggle upload / URL */}
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setMediaInputMode('upload')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${mediaInputMode === 'upload' ? 'border-amber-500/60 bg-amber-500/10 text-amber-400' : 'border-white/10 bg-white/5 text-white/40 hover:text-white/70'}`}>
+                          <Upload className="w-3 h-3" /> Subir archivo
+                        </button>
+                        <button type="button" onClick={() => setMediaInputMode('url')}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${mediaInputMode === 'url' ? 'border-amber-500/60 bg-amber-500/10 text-amber-400' : 'border-white/10 bg-white/5 text-white/40 hover:text-white/70'}`}>
+                          <Link className="w-3 h-3" /> Usar URL
+                        </button>
+                      </div>
+
+                      {mediaInputMode === 'upload' ? (
+                        <div>
+                          <input
+                            ref={mediaFileRef}
+                            type="file"
+                            className="hidden"
+                            accept={headerType === 'IMAGE' ? 'image/jpeg,image/png,image/webp' : headerType === 'VIDEO' ? 'video/mp4,video/quicktime' : 'application/pdf'}
+                            onChange={e => { if (e.target.files?.[0]) handleMediaUpload(e.target.files[0]) }}
+                          />
+                          {uploadedFileName && headerMediaUrl ? (
+                            <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-green-400 font-bold truncate">{uploadedFileName}</p>
+                                <p className="text-[10px] text-white/30 truncate">{headerMediaUrl}</p>
+                              </div>
+                              <button type="button" onClick={() => { setHeaderMediaUrl(''); setUploadedFileName('') }}
+                                className="text-white/30 hover:text-red-400 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => mediaFileRef.current?.click()} disabled={uploadingMedia}
+                              className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-white/15 hover:border-amber-500/40 text-white/40 hover:text-amber-400 transition-all disabled:opacity-50">
+                              {uploadingMedia
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</>
+                                : <><Upload className="w-4 h-4" />
+                                    {headerType === 'IMAGE' ? 'Seleccionar imagen (JPG, PNG, WEBP · máx 5 MB)' :
+                                     headerType === 'VIDEO' ? 'Seleccionar video (MP4 · máx 16 MB)' :
+                                     'Seleccionar PDF (máx 100 MB)'}</>
+                              }
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <input value={headerMediaUrl} onChange={e => { setHeaderMediaUrl(e.target.value); setUploadedFileName('') }}
+                            placeholder={headerType === 'IMAGE' ? 'https://... URL de la imagen' : headerType === 'VIDEO' ? 'https://... URL del vídeo' : 'https://... URL del PDF'}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50" />
+                          <p className="text-[10px] text-white/25 mt-1">La URL debe ser pública y accesible por Meta</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
