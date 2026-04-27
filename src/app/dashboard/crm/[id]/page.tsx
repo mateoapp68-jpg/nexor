@@ -78,6 +78,7 @@ export default function CrmCampaignDetailPage() {
 
     // Duplicate
     const [duplicating, setDuplicating] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
 
     useEffect(() => { fetchCampaign(); fetchWaStatus(); fetchAvailableBots() }, [id])
 
@@ -158,7 +159,8 @@ export default function CrmCampaignDetailPage() {
         }
     }
 
-    async function fetchCampaign() {
+    async function fetchCampaign(showRefreshing = false) {
+        if (showRefreshing) setRefreshing(true)
         try {
             const res = await fetch(`/api/crm/campaigns/${id}`)
             const data = await res.json()
@@ -169,7 +171,7 @@ export default function CrmCampaignDetailPage() {
                 setActiveBotId(data.campaign.bot.id)
             }
         } catch { setError('Error al cargar') }
-        finally { setLoading(false) }
+        finally { setLoading(false); setRefreshing(false) }
     }
 
     async function toggleAiResponse() {
@@ -490,8 +492,15 @@ export default function CrmCampaignDetailPage() {
                                     <Pencil size={14} />
                                 </button>
                             )}
-                            <button onClick={fetchCampaign} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                                <RefreshCw size={14} />
+                            <button
+                                onClick={() => fetchCampaign(true)}
+                                disabled={refreshing}
+                                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all disabled:opacity-50"
+                                title="Actualizar"
+                            >
+                                {refreshing
+                                    ? <Loader2 size={14} className="animate-spin text-amber-400" />
+                                    : <RefreshCw size={14} />}
                             </button>
                         </>
                     )}
