@@ -44,7 +44,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     if (campaign.status === 'FAILED') {
         await (prisma as any).broadcastCampaign.update({
             where: { id: params.id },
-            data: { status: 'DRAFT', failedCount: 0 },
+            data: { status: 'DRAFT', failedCount: 0, imageIndex: 0 },
         })
         // Reset failed contacts to PENDING so they get retried
         await (prisma as any).broadcastContact.updateMany({

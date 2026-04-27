@@ -67,7 +67,7 @@ export default function CrmCampaignDetailPage() {
 
     // Edit mode (nombre, prompt, delay, scheduledAt)
     const [isEditing, setIsEditing] = useState(false)
-    const [editForm, setEditForm] = useState({ name: '', prompt: '', delayValue: '30', delayUnit: 'seconds', scheduledAt: '' })
+    const [editForm, setEditForm] = useState({ name: '', prompt: '', messageExample: '', delayValue: '30', delayUnit: 'seconds', scheduledAt: '' })
     const [savingEdit, setSavingEdit] = useState(false)
 
     // Image / audio management
@@ -196,6 +196,7 @@ export default function CrmCampaignDetailPage() {
         setEditForm({
             name: campaign.name,
             prompt: campaign.prompt || '',
+            messageExample: campaign.messageExample || '',
             delayValue: String(campaign.delayValue),
             delayUnit: campaign.delayUnit,
             scheduledAt: campaign.scheduledAt ? new Date(campaign.scheduledAt).toISOString().slice(0, 16) : '',
@@ -565,6 +566,24 @@ export default function CrmCampaignDetailPage() {
                         ) : (
                             <p className="text-sm text-white/70 leading-relaxed">{campaign.prompt || <span className="text-white/25 italic">Sin prompt</span>}</p>
                         )}
+
+                        {/* Ejemplar de mensaje */}
+                        <div className="mt-4">
+                            <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-2">Ejemplar de mensaje <span className="text-white/20 normal-case font-normal">(opcional)</span></p>
+                            {isEditing ? (
+                                <textarea
+                                    value={editForm.messageExample}
+                                    onChange={e => setEditForm(f => ({ ...f, messageExample: e.target.value }))}
+                                    rows={3}
+                                    placeholder="Ej: ¡Hola! 👋 Tenemos una oferta increíble para vos esta semana. No te la perdás 🔥"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none leading-relaxed"
+                                />
+                            ) : (
+                                campaign.messageExample
+                                    ? <p className="text-sm text-white/70 leading-relaxed">{campaign.messageExample}</p>
+                                    : <p className="text-sm text-white/25 italic">Sin ejemplar</p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Contacts list */}

@@ -3,15 +3,14 @@
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-// Pages where expired users are still allowed
-const ALLOWED_EXPIRED = ['/dashboard/planes', '/dashboard/store/checkout']
-
 export default function PlanGuard() {
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    if (ALLOWED_EXPIRED.some(p => pathname.startsWith(p))) return
+    // Free navigation inside dashboard — each service page handles its own plan gating
+    // Redirect only applies outside the dashboard (edge case)
+    if (pathname.startsWith('/dashboard')) return
 
     fetch('/api/plan-status')
       .then(r => r.json())
